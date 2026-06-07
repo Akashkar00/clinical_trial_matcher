@@ -1,0 +1,22 @@
+{
+  "id": 11,
+  "age": 60,
+  "gender": "female",
+  "diagnosis": "Ovarian Cancer",
+  "stage": "Stage III",
+  "biomarkers": [
+    "BRCA1 mutation positive"
+  ],
+  "prior_treatments": [
+    "Carboplatin",
+    "Paclitaxel",
+    "Olaparib"
+  ],
+  "current_status": "Recurrent disease",
+  "location": "Chennai, India",
+  "ecog_status": 1,
+  "comorbidities": [],
+  "key_labs": {
+    "CA-125": 180
+  }
+}

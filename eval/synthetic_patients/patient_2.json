@@ -1,0 +1,26 @@
+{
+  "id": 2,
+  "age": 62,
+  "gender": "male",
+  "diagnosis": "Non-Small Cell Lung Cancer",
+  "stage": "Stage IV",
+  "biomarkers": [
+    "EGFR mutation positive",
+    "Exon 19 deletion"
+  ],
+  "prior_treatments": [
+    "Gefitinib",
+    "Osimertinib"
+  ],
+  "current_status": "Progressive disease",
+  "location": "Delhi, India",
+  "ecog_status": 2,
+  "comorbidities": [
+    "Type 2 Diabetes",
+    "COPD mild"
+  ],
+  "key_labs": {
+    "Creatinine": 1.1,
+    "ALT": 32
+  }
+}

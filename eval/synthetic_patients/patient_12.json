@@ -1,0 +1,23 @@
+{
+  "id": 12,
+  "age": 65,
+  "gender": "male",
+  "diagnosis": "Pancreatic Cancer",
+  "stage": "Stage IV",
+  "biomarkers": [
+    "KRAS mutated",
+    "BRCA wildtype"
+  ],
+  "prior_treatments": [
+    "FOLFIRINOX"
+  ],
+  "current_status": "Progressive metastatic disease",
+  "location": "Bengaluru, India",
+  "ecog_status": 2,
+  "comorbidities": [
+    "Type 2 Diabetes"
+  ],
+  "key_labs": {
+    "CA19-9": 1200
+  }
+}

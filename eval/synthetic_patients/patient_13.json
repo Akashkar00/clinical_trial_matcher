@@ -1,0 +1,23 @@
+{
+  "id": 13,
+  "age": 48,
+  "gender": "female",
+  "diagnosis": "Breast Cancer",
+  "stage": "Stage IV",
+  "biomarkers": [
+    "HER2 negative",
+    "ER positive",
+    "PR positive"
+  ],
+  "prior_treatments": [
+    "Letrozole",
+    "Palbociclib"
+  ],
+  "current_status": "Progression on CDK4/6 inhibitor",
+  "location": "Mumbai, India",
+  "ecog_status": 1,
+  "comorbidities": [],
+  "key_labs": {
+    "Alkaline Phosphatase": 150
+  }
+}

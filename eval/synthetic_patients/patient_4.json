@@ -1,0 +1,24 @@
+{
+  "id": 4,
+  "age": 68,
+  "gender": "male",
+  "diagnosis": "Prostate Cancer",
+  "stage": "Stage IV",
+  "biomarkers": [
+    "Castration-resistant"
+  ],
+  "prior_treatments": [
+    "Abiraterone",
+    "Docetaxel"
+  ],
+  "current_status": "Metastatic progression",
+  "location": "Bengaluru, India",
+  "ecog_status": 1,
+  "comorbidities": [
+    "Coronary Artery Disease"
+  ],
+  "key_labs": {
+    "PSA": 45.2,
+    "Hemoglobin": 10.5
+  }
+}

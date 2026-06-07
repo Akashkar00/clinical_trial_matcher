@@ -1,0 +1,104 @@
+{
+  "_meta": {
+    "purpose": "Patient ↔ trial labels for evaluating retrieval recall and scoring precision.",
+    "schema": {
+      "patient_id": "matches eval/synthetic_patients/patient_<N>.json",
+      "nct_id":     "ClinicalTrials.gov NCT identifier",
+      "expected_verdict": "MATCH | PARTIAL | NO — clinician's call",
+      "rationale": "one-sentence reason — keeps the label auditable",
+      "annotator": "who labeled this row",
+      "annotated_at": "ISO date"
+    },
+    "status": "SEED — illustrative labels only. Replace with clinician-reviewed labels before publishing any precision/recall numbers. The synthetic patients themselves are also not guaranteed clinically realistic.",
+    "labeling_protocol": [
+      "1. Run `python -m eval.run_eval --dump-trials patient_<N>` to list the trials currently retrieved.",
+      "2. For each (patient, trial) pair, an oncologist reads the trial's eligibility criteria and the patient profile.",
+      "3. Verdict: MATCH = clearly eligible; PARTIAL = eligible pending missing data; NO = clear exclusion or inclusion mismatch.",
+      "4. Add ALL retrieved trials, not just MATCHes — the eval needs negatives to compute precision.",
+      "5. Add at least 1-2 known-eligible NCTIDs per patient (from clinician knowledge or trial-finder tools) — the eval needs them to compute retrieval recall, since they may NOT appear in the current retrieval output.",
+      "6. The `is_in_retrieval_set` field is computed at eval time, not by the annotator."
+    ]
+  },
+  "labels": [
+    {
+      "patient_id": 2,
+      "nct_id": "NCT07608835",
+      "expected_verdict": "PARTIAL",
+      "rationale": "EGFR+ NSCLC stage IV fits diagnosis; ECOG 2 may borderline against trial requirements.",
+      "annotator": "seed-illustrative",
+      "annotated_at": "2026-06-05"
+    },
+    {
+      "patient_id": 2,
+      "nct_id": "NCT06357533",
+      "expected_verdict": "NO",
+      "rationale": "Trial excludes EGFR-mutated patients; patient is EGFR positive.",
+      "annotator": "seed-illustrative",
+      "annotated_at": "2026-06-05"
+    },
+    {
+      "patient_id": 2,
+      "nct_id": "NCT03791034",
+      "expected_verdict": "NO",
+      "rationale": "Trial requires Stage I-IIIA; patient is Stage IV.",
+      "annotator": "seed-illustrative",
+      "annotated_at": "2026-06-05"
+    },
+    {
+      "patient_id": 2,
+      "nct_id": "NCT07185997",
+      "expected_verdict": "NO",
+      "rationale": "Patient has prior osimertinib (an EGFR-targeting agent) which the trial excludes.",
+      "annotator": "seed-illustrative",
+      "annotated_at": "2026-06-05"
+    },
+    {
+      "patient_id": 3,
+      "nct_id": "NCT01252485",
+      "expected_verdict": "MATCH",
+      "rationale": "AML registry trial with broad inclusion; patient is in CR with FLT3-ITD+ AML.",
+      "annotator": "seed-illustrative",
+      "annotated_at": "2026-06-05"
+    },
+    {
+      "patient_id": 3,
+      "nct_id": "NCT07183878",
+      "expected_verdict": "MATCH",
+      "rationale": "FLT3-ITD positive AML in CR — fits conditioning trial criteria.",
+      "annotator": "seed-illustrative",
+      "annotated_at": "2026-06-05"
+    },
+    {
+      "patient_id": 3,
+      "nct_id": "NCT07044687",
+      "expected_verdict": "NO",
+      "rationale": "Trial is for untreated AML; patient has had prior induction (cytarabine + daunorubicin).",
+      "annotator": "seed-illustrative",
+      "annotated_at": "2026-06-05"
+    },
+    {
+      "patient_id": 1,
+      "nct_id": "NCT06677944",
+      "expected_verdict": "NO",
+      "rationale": "Trial requires HER2-negative; patient is HER2 positive.",
+      "annotator": "seed-illustrative",
+      "annotated_at": "2026-06-05"
+    },
+    {
+      "patient_id": 1,
+      "nct_id": "NCT06547853",
+      "expected_verdict": "NO",
+      "rationale": "Trial requires treatment-completed status; patient has progressive disease.",
+      "annotator": "seed-illustrative",
+      "annotated_at": "2026-06-05"
+    },
+    {
+      "patient_id": 1,
+      "nct_id": "NCT06443645",
+      "expected_verdict": "NO",
+      "rationale": "Trial requires localized disease; patient is Stage III.",
+      "annotator": "seed-illustrative",
+      "annotated_at": "2026-06-05"
+    }
+  ]
+}

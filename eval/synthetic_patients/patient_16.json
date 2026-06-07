@@ -1,0 +1,23 @@
+{
+  "id": 16,
+  "age": 75,
+  "gender": "male",
+  "diagnosis": "Prostate Cancer",
+  "stage": "Stage IV",
+  "biomarkers": [
+    "Hormone-sensitive"
+  ],
+  "prior_treatments": [
+    "Androgen Deprivation Therapy"
+  ],
+  "current_status": "Stable on ADT",
+  "location": "Kolkata, India",
+  "ecog_status": 1,
+  "comorbidities": [
+    "Osteoarthritis",
+    "Hypertension"
+  ],
+  "key_labs": {
+    "PSA": 0.2
+  }
+}

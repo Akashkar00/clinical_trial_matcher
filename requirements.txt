@@ -1,0 +1,24 @@
+# Core
+python-dotenv==1.2.2
+pydantic==2.13.4
+requests==2.34.2
+
+# PDF extraction
+pymupdf==1.27.2.3
+
+# LLM client
+groq==1.4.0
+
+# Pipeline orchestration
+langgraph==1.2.4
+langchain-core==1.4.0
+
+# Vector store + embeddings
+qdrant-client==1.18.0
+sentence-transformers==5.5.1
+
+# UI
+streamlit==1.58.0
+
+# Tests
+pytest==8.3.3

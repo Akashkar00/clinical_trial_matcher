@@ -1,0 +1,21 @@
+{
+  "id": 8,
+  "age": 41,
+  "gender": "female",
+  "diagnosis": "Melanoma",
+  "stage": "Stage IV",
+  "biomarkers": [
+    "BRAF V600E positive"
+  ],
+  "prior_treatments": [
+    "Dabrafenib",
+    "Trametinib"
+  ],
+  "current_status": "Progression on BRAF inhibitors",
+  "location": "Mumbai, India",
+  "ecog_status": 1,
+  "comorbidities": [],
+  "key_labs": {
+    "LDH": 480
+  }
+}

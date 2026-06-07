@@ -1,0 +1,20 @@
+{
+  "id": 19,
+  "age": 42,
+  "gender": "female",
+  "diagnosis": "Cervical Cancer",
+  "stage": "Stage IV",
+  "biomarkers": [
+    "PD-L1 CPS 15"
+  ],
+  "prior_treatments": [
+    "Cisplatin + Paclitaxel + Bevacizumab"
+  ],
+  "current_status": "Progressive metastatic disease",
+  "location": "Chennai, India",
+  "ecog_status": 1,
+  "comorbidities": [],
+  "key_labs": {
+    "Hemoglobin": 9.8
+  }
+}

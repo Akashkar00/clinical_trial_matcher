@@ -1,0 +1,21 @@
+{
+  "id": 17,
+  "age": 59,
+  "gender": "female",
+  "diagnosis": "Colorectal Cancer",
+  "stage": "Stage III",
+  "biomarkers": [
+    "dMMR",
+    "MSI-High"
+  ],
+  "prior_treatments": [
+    "Adjuvant FOLFOX"
+  ],
+  "current_status": "Recurrence 12 months post-adjuvant",
+  "location": "Delhi, India",
+  "ecog_status": 0,
+  "comorbidities": [],
+  "key_labs": {
+    "CEA": 8.4
+  }
+}

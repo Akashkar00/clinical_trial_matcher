@@ -1,0 +1,23 @@
+{
+  "id": 14,
+  "age": 52,
+  "gender": "male",
+  "diagnosis": "Gastrointestinal Stromal Tumor",
+  "stage": "Metastatic",
+  "biomarkers": [
+    "KIT exon 11 mutation"
+  ],
+  "prior_treatments": [
+    "Imatinib",
+    "Sunitinib"
+  ],
+  "current_status": "Progression on second-line TKI",
+  "location": "Pune, India",
+  "ecog_status": 1,
+  "comorbidities": [
+    "Gerd"
+  ],
+  "key_labs": {
+    "Creatinine": 0.9
+  }
+}

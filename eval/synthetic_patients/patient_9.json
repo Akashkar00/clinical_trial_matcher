@@ -1,0 +1,25 @@
+{
+  "id": 9,
+  "age": 72,
+  "gender": "male",
+  "diagnosis": "Multiple Myeloma",
+  "stage": "Relapsed",
+  "biomarkers": [
+    "t(11;14) translation"
+  ],
+  "prior_treatments": [
+    "Bortezomib",
+    "Lenalidomide",
+    "Dexamethasone"
+  ],
+  "current_status": "Relapsed/Refractory",
+  "location": "Ahmedabad, India",
+  "ecog_status": 2,
+  "comorbidities": [
+    "Chronic Kidney Disease Stage 3"
+  ],
+  "key_labs": {
+    "Creatinine": 2.1,
+    "eGFR": 35
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": 18,
+  "age": 63,
+  "gender": "male",
+  "diagnosis": "Renal Cell Carcinoma",
+  "stage": "Stage IV",
+  "biomarkers": [
+    "Clear cell histology"
+  ],
+  "prior_treatments": [
+    "Sunitinib",
+    "Nivolumab"
+  ],
+  "current_status": "Progression on immunotherapy",
+  "location": "Mumbai, India",
+  "ecog_status": 1,
+  "comorbidities": [
+    "Hypercholesterolemia"
+  ],
+  "key_labs": {
+    "Creatinine": 1.4
+  }
+}

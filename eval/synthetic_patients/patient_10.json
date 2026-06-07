@@ -1,0 +1,20 @@
+{
+  "id": 10,
+  "age": 29,
+  "gender": "male",
+  "diagnosis": "Hodgkin Lymphoma",
+  "stage": "Stage II",
+  "biomarkers": [
+    "CD30 positive"
+  ],
+  "prior_treatments": [
+    "ABVD chemotherapy"
+  ],
+  "current_status": "Refractory to first line",
+  "location": "Delhi, India",
+  "ecog_status": 0,
+  "comorbidities": [],
+  "key_labs": {
+    "WBC": 8.5
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": 3,
+  "age": 34,
+  "gender": "female",
+  "diagnosis": "Acute Myeloid Leukemia",
+  "stage": "Untreated",
+  "biomarkers": [
+    "FLT3-ITD mutation positive",
+    "NPM1 negative"
+  ],
+  "prior_treatments": [
+    "Cytarabine",
+    "Daunorubicin"
+  ],
+  "current_status": "Complete remission",
+  "location": "Chennai, India",
+  "ecog_status": 0,
+  "comorbidities": [],
+  "key_labs": {
+    "WBC": 4.2,
+    "Hemoglobin": 11.8,
+    "Platelets": 180000
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": 6,
+  "age": 50,
+  "gender": "female",
+  "diagnosis": "Breast Cancer",
+  "stage": "Stage II",
+  "biomarkers": [
+    "Triple negative"
+  ],
+  "prior_treatments": [
+    "AC chemotherapy",
+    "Paclitaxel"
+  ],
+  "current_status": "No evidence of disease",
+  "location": "Pune, India",
+  "ecog_status": 0,
+  "comorbidities": [
+    "Hypothyroidism"
+  ],
+  "key_labs": {
+    "TSH": 2.1
+  }
+}

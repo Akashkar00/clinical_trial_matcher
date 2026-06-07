@@ -1,0 +1,26 @@
+{
+  "id": 1,
+  "age": 45,
+  "gender": "female",
+  "diagnosis": "Breast Cancer",
+  "stage": "Stage III",
+  "biomarkers": [
+    "HER2 positive",
+    "ER positive",
+    "PR negative"
+  ],
+  "prior_treatments": [
+    "Tamoxifen",
+    "Anastrozole"
+  ],
+  "current_status": "Progressive disease",
+  "location": "Mumbai, India",
+  "ecog_status": 1,
+  "comorbidities": [
+    "Hypertension"
+  ],
+  "key_labs": {
+    "HbA1c": 5.4,
+    "Creatinine": 0.9
+  }
+}

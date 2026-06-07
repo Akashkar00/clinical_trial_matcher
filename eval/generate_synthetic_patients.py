@@ -1,0 +1,297 @@
+# eval/generate_synthetic_patients.py
+
+import json
+from pathlib import Path
+
+patients = [
+    {
+        "id": 1,
+        "age": 45,
+        "gender": "female",
+        "diagnosis": "Breast Cancer",
+        "stage": "Stage III",
+        "biomarkers": ["HER2 positive", "ER positive", "PR negative"],
+        "prior_treatments": ["Tamoxifen", "Anastrozole"],
+        "current_status": "Progressive disease",
+        "location": "Mumbai, India",
+        "ecog_status": 1,
+        "comorbidities": ["Hypertension"],
+        "key_labs": {"HbA1c": 5.4, "Creatinine": 0.9}
+    },
+    {
+        "id": 2,
+        "age": 62,
+        "gender": "male",
+        "diagnosis": "Non-Small Cell Lung Cancer",
+        "stage": "Stage IV",
+        "biomarkers": ["EGFR mutation positive", "Exon 19 deletion"],
+        "prior_treatments": ["Gefitinib", "Osimertinib"],
+        "current_status": "Progressive disease",
+        "location": "Delhi, India",
+        "ecog_status": 2,
+        "comorbidities": ["Type 2 Diabetes", "COPD mild"],
+        "key_labs": {"Creatinine": 1.1, "ALT": 32}
+    },
+    {
+        "id": 3,
+        "age": 34,
+        "gender": "female",
+        "diagnosis": "Acute Myeloid Leukemia",
+        "stage": "Untreated",
+        "biomarkers": ["FLT3-ITD mutation positive", "NPM1 negative"],
+        "prior_treatments": ["Cytarabine", "Daunorubicin"],
+        "current_status": "Complete remission",
+        "location": "Chennai, India",
+        "ecog_status": 0,
+        "comorbidities": [],
+        "key_labs": {"WBC": 4.2, "Hemoglobin": 11.8, "Platelets": 180000}
+    },
+    {
+        "id": 4,
+        "age": 68,
+        "gender": "male",
+        "diagnosis": "Prostate Cancer",
+        "stage": "Stage IV",
+        "biomarkers": ["Castration-resistant"],
+        "prior_treatments": ["Abiraterone", "Docetaxel"],
+        "current_status": "Metastatic progression",
+        "location": "Bengaluru, India",
+        "ecog_status": 1,
+        "comorbidities": ["Coronary Artery Disease"],
+        "key_labs": {"PSA": 45.2, "Hemoglobin": 10.5}
+    },
+    {
+        "id": 5,
+        "age": 55,
+        "gender": "female",
+        "diagnosis": "Colorectal Cancer",
+        "stage": "Stage IV",
+        "biomarkers": ["KRAS mutation positive", "MSS"],
+        "prior_treatments": ["FOLFOX", "FOLFIRI", "Bevacizumab"],
+        "current_status": "Progression after 2 lines",
+        "location": "Hyderabad, India",
+        "ecog_status": 1,
+        "comorbidities": [],
+        "key_labs": {"CEA": 24.5, "AST": 41}
+    },
+    {
+        "id": 6,
+        "age": 50,
+        "gender": "female",
+        "diagnosis": "Breast Cancer",
+        "stage": "Stage II",
+        "biomarkers": ["Triple negative"],
+        "prior_treatments": ["AC chemotherapy", "Paclitaxel"],
+        "current_status": "No evidence of disease",
+        "location": "Pune, India",
+        "ecog_status": 0,
+        "comorbidities": ["Hypothyroidism"],
+        "key_labs": {"TSH": 2.1}
+    },
+    {
+        "id": 7,
+        "age": 58,
+        "gender": "male",
+        "diagnosis": "Non-Small Cell Lung Cancer",
+        "stage": "Stage III",
+        "biomarkers": ["ALK translocation positive"],
+        "prior_treatments": ["Cisplatin", "Pemetrexed", "Radiotherapy"],
+        "current_status": "Stable disease",
+        "location": "Kolkata, India",
+        "ecog_status": 1,
+        "comorbidities": ["Hypertension"],
+        "key_labs": {"Creatinine": 0.8}
+    },
+    {
+        "id": 8,
+        "age": 41,
+        "gender": "female",
+        "diagnosis": "Melanoma",
+        "stage": "Stage IV",
+        "biomarkers": ["BRAF V600E positive"],
+        "prior_treatments": ["Dabrafenib", "Trametinib"],
+        "current_status": "Progression on BRAF inhibitors",
+        "location": "Mumbai, India",
+        "ecog_status": 1,
+        "comorbidities": [],
+        "key_labs": {"LDH": 480}
+    },
+    {
+        "id": 9,
+        "age": 72,
+        "gender": "male",
+        "diagnosis": "Multiple Myeloma",
+        "stage": "Relapsed",
+        "biomarkers": ["t(11;14) translation"],
+        "prior_treatments": ["Bortezomib", "Lenalidomide", "Dexamethasone"],
+        "current_status": "Relapsed/Refractory",
+        "location": "Ahmedabad, India",
+        "ecog_status": 2,
+        "comorbidities": ["Chronic Kidney Disease Stage 3"],
+        "key_labs": {"Creatinine": 2.1, "eGFR": 35}
+    },
+    {
+        "id": 10,
+        "age": 29,
+        "gender": "male",
+        "diagnosis": "Hodgkin Lymphoma",
+        "stage": "Stage II",
+        "biomarkers": ["CD30 positive"],
+        "prior_treatments": ["ABVD chemotherapy"],
+        "current_status": "Refractory to first line",
+        "location": "Delhi, India",
+        "ecog_status": 0,
+        "comorbidities": [],
+        "key_labs": {"WBC": 8.5}
+    },
+    {
+        "id": 11,
+        "age": 60,
+        "gender": "female",
+        "diagnosis": "Ovarian Cancer",
+        "stage": "Stage III",
+        "biomarkers": ["BRCA1 mutation positive"],
+        "prior_treatments": ["Carboplatin", "Paclitaxel", "Olaparib"],
+        "current_status": "Recurrent disease",
+        "location": "Chennai, India",
+        "ecog_status": 1,
+        "comorbidities": [],
+        "key_labs": {"CA-125": 180}
+    },
+    {
+        "id": 12,
+        "age": 65,
+        "gender": "male",
+        "diagnosis": "Pancreatic Cancer",
+        "stage": "Stage IV",
+        "biomarkers": ["KRAS mutated", "BRCA wildtype"],
+        "prior_treatments": ["FOLFIRINOX"],
+        "current_status": "Progressive metastatic disease",
+        "location": "Bengaluru, India",
+        "ecog_status": 2,
+        "comorbidities": ["Type 2 Diabetes"],
+        "key_labs": {"CA19-9": 1200}
+    },
+    {
+        "id": 13,
+        "age": 48,
+        "gender": "female",
+        "diagnosis": "Breast Cancer",
+        "stage": "Stage IV",
+        "biomarkers": ["HER2 negative", "ER positive", "PR positive"],
+        "prior_treatments": ["Letrozole", "Palbociclib"],
+        "current_status": "Progression on CDK4/6 inhibitor",
+        "location": "Mumbai, India",
+        "ecog_status": 1,
+        "comorbidities": [],
+        "key_labs": {"Alkaline Phosphatase": 150}
+    },
+    {
+        "id": 14,
+        "age": 52,
+        "gender": "male",
+        "diagnosis": "Gastrointestinal Stromal Tumor",
+        "stage": "Metastatic",
+        "biomarkers": ["KIT exon 11 mutation"],
+        "prior_treatments": ["Imatinib", "Sunitinib"],
+        "current_status": "Progression on second-line TKI",
+        "location": "Pune, India",
+        "ecog_status": 1,
+        "comorbidities": ["Gerd"],
+        "key_labs": {"Creatinine": 0.9}
+    },
+    {
+        "id": 15,
+        "age": 67,
+        "gender": "female",
+        "diagnosis": "Non-Small Cell Lung Cancer",
+        "stage": "Stage IV",
+        "biomarkers": ["PD-L1 expression 60%", "EGFR negative", "ALK negative"],
+        "prior_treatments": ["Pembrolizumab", "Carboplatin", "Pemetrexed"],
+        "current_status": "Progression on immunotherapy",
+        "location": "Hyderabad, India",
+        "ecog_status": 1,
+        "comorbidities": ["COPD moderate"],
+        "key_labs": {"ALT": 28, "AST": 30}
+    },
+    {
+        "id": 16,
+        "age": 75,
+        "gender": "male",
+        "diagnosis": "Prostate Cancer",
+        "stage": "Stage IV",
+        "biomarkers": ["Hormone-sensitive"],
+        "prior_treatments": ["Androgen Deprivation Therapy"],
+        "current_status": "Stable on ADT",
+        "location": "Kolkata, India",
+        "ecog_status": 1,
+        "comorbidities": ["Osteoarthritis", "Hypertension"],
+        "key_labs": {"PSA": 0.2}
+    },
+    {
+        "id": 17,
+        "age": 59,
+        "gender": "female",
+        "diagnosis": "Colorectal Cancer",
+        "stage": "Stage III",
+        "biomarkers": ["dMMR", "MSI-High"],
+        "prior_treatments": ["Adjuvant FOLFOX"],
+        "current_status": "Recurrence 12 months post-adjuvant",
+        "location": "Delhi, India",
+        "ecog_status": 0,
+        "comorbidities": [],
+        "key_labs": {"CEA": 8.4}
+    },
+    {
+        "id": 18,
+        "age": 63,
+        "gender": "male",
+        "diagnosis": "Renal Cell Carcinoma",
+        "stage": "Stage IV",
+        "biomarkers": ["Clear cell histology"],
+        "prior_treatments": ["Sunitinib", "Nivolumab"],
+        "current_status": "Progression on immunotherapy",
+        "location": "Mumbai, India",
+        "ecog_status": 1,
+        "comorbidities": ["Hypercholesterolemia"],
+        "key_labs": {"Creatinine": 1.4}
+    },
+    {
+        "id": 19,
+        "age": 42,
+        "gender": "female",
+        "diagnosis": "Cervical Cancer",
+        "stage": "Stage IV",
+        "biomarkers": ["PD-L1 CPS 15"],
+        "prior_treatments": ["Cisplatin + Paclitaxel + Bevacizumab"],
+        "current_status": "Progressive metastatic disease",
+        "location": "Chennai, India",
+        "ecog_status": 1,
+        "comorbidities": [],
+        "key_labs": {"Hemoglobin": 9.8}
+    },
+    {
+        "id": 20,
+        "age": 37,
+        "gender": "male",
+        "diagnosis": "Glioblastoma",
+        "stage": "Recurrent",
+        "biomarkers": ["MGMT promoter methylated"],
+        "prior_treatments": ["Temozolomide", "Radiotherapy"],
+        "current_status": "Progression post first-line",
+        "location": "Bengaluru, India",
+        "ecog_status": 1,
+        "comorbidities": [],
+        "key_labs": {"Platelets": 150000}
+    }
+]
+
+output_dir = Path("eval/synthetic_patients")
+output_dir.mkdir(parents=True, exist_ok=True)
+
+for p in patients:
+    filename = f"patient_{p['id']}.json"
+    filepath = output_dir / filename
+    with open(filepath, "w") as f:
+        json.dump(p, f, indent=2)
+    print(f"Created: {filepath}")

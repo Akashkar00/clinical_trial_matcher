@@ -1,0 +1,24 @@
+{
+  "id": 5,
+  "age": 55,
+  "gender": "female",
+  "diagnosis": "Colorectal Cancer",
+  "stage": "Stage IV",
+  "biomarkers": [
+    "KRAS mutation positive",
+    "MSS"
+  ],
+  "prior_treatments": [
+    "FOLFOX",
+    "FOLFIRI",
+    "Bevacizumab"
+  ],
+  "current_status": "Progression after 2 lines",
+  "location": "Hyderabad, India",
+  "ecog_status": 1,
+  "comorbidities": [],
+  "key_labs": {
+    "CEA": 24.5,
+    "AST": 41
+  }
+}
