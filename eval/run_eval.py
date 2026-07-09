@@ -36,10 +36,15 @@ PROFILE_DIR = Path("eval/synthetic_patients")
 GT_PATH = Path("eval/ground_truth.json")
 
 
-def _load_profiles(max_patients: int | None) -> list[tuple[int, PatientProfile]]:
+def _load_profiles(
+    max_patients: int | None,
+    only_ids: set[int] | None = None,
+) -> list[tuple[int, PatientProfile]]:
     files = sorted(PROFILE_DIR.glob("patient_*.json"), key=lambda p: int(p.stem.split("_")[1]))
     if not files:
         raise FileNotFoundError(f"No synthetic profiles in {PROFILE_DIR}")
+    if only_ids is not None:
+        files = [f for f in files if int(f.stem.split("_")[1]) in only_ids]
     if max_patients:
         files = files[:max_patients]
     out: list[tuple[int, PatientProfile]] = []
@@ -72,8 +77,8 @@ def _run_pipeline(profile: PatientProfile) -> dict:
     })
 
 
-def run_evaluation(max_patients: int | None = None) -> None:
-    profiles = _load_profiles(max_patients)
+def run_evaluation(max_patients: int | None = None, only_ids: set[int] | None = None) -> None:
+    profiles = _load_profiles(max_patients, only_ids)
     labels = _load_ground_truth()
     by_patient = group_labels_by_patient(labels)
 
@@ -91,7 +96,22 @@ def run_evaluation(max_patients: int | None = None) -> None:
 
         scored = state.get("scored_trials") or []
         retrieved_ranked = [t["nct_id"] for t in scored]
-        predicted_by_nct = {t["nct_id"]: t["match_type"] for t in scored}
+        # A prediction is only usable if the scorer produced a real verdict.
+        # Rate-limit / error fallbacks (scoring_ok=False) are PARTIAL@0.0
+        # placeholders, NOT model verdicts — excluding them keeps a degraded
+        # run from silently poisoning the confusion matrix.
+        predicted_by_nct = {
+            t["nct_id"]: t["match_type"]
+            for t in scored
+            if t.get("scoring_ok", True)
+        }
+        n_fallback = sum(1 for t in scored if not t.get("scoring_ok", True))
+        if n_fallback:
+            logger.warning(
+                "eval.patient.scoring_fallbacks id=%d dropped=%d of=%d "
+                "(rate-limited; lower CT_SCORE_CONCURRENCY)",
+                pid, n_fallback, len(scored),
+            )
 
         patient_labels = by_patient.get(pid, [])
         relevant = {row["nct_id"] for row in patient_labels
@@ -221,15 +241,22 @@ def compare_prompts() -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--max-patients", type=int, default=None)
+    parser.add_argument("--patients", type=str, default=None,
+                        help="Comma-separated patient ids to evaluate (e.g. 1,2,3,5). "
+                             "Restricts the run to those profiles.")
     parser.add_argument("--dump-trials", type=int, default=None,
                         help="Patient id; lists retrieved trials so you can label them")
     parser.add_argument("--compare-prompts", action="store_true",
                         help="A/B test SCORE_PROMPT_V2 vs V3 against ground truth")
     args = parser.parse_args()
 
+    only_ids = None
+    if args.patients:
+        only_ids = {int(x) for x in args.patients.split(",") if x.strip()}
+
     if args.dump_trials is not None:
         dump_trials(args.dump_trials)
     elif args.compare_prompts:
         compare_prompts()
     else:
-        run_evaluation(max_patients=args.max_patients)
+        run_evaluation(max_patients=args.max_patients, only_ids=only_ids)

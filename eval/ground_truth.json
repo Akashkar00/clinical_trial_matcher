@@ -1,104 +1,522 @@
 {
   "_meta": {
-    "purpose": "Patient ↔ trial labels for evaluating retrieval recall and scoring precision.",
+    "purpose": "Patient <-> trial labels for evaluating retrieval ranking and scoring accuracy.",
     "schema": {
       "patient_id": "matches eval/synthetic_patients/patient_<N>.json",
-      "nct_id":     "ClinicalTrials.gov NCT identifier",
-      "expected_verdict": "MATCH | PARTIAL | NO — clinician's call",
-      "rationale": "one-sentence reason — keeps the label auditable",
-      "annotator": "who labeled this row",
+      "nct_id": "ClinicalTrials.gov NCT identifier",
+      "expected_verdict": "MATCH | PARTIAL | NO",
+      "rationale": "one sentence citing the deciding eligibility criterion",
+      "annotator": "who/what assigned the label",
       "annotated_at": "ISO date"
     },
-    "status": "SEED — illustrative labels only. Replace with clinician-reviewed labels before publishing any precision/recall numbers. The synthetic patients themselves are also not guaranteed clinically realistic.",
+    "status": "CRITERIA-DERIVED (annotator=criteria-derived-v1), NOT clinician-reviewed. Each (patient, trial) pair was labeled by reading the trial's actual ClinicalTrials.gov eligibility criteria and applying deterministic rules: tumor type, biomarker/receptor state, disease stage, prior-therapy exclusions, and demographic bounds. MATCH = clearly eligible on documented criteria; PARTIAL = eligible pending undocumented data or borderline on a secondary criterion (e.g. ECOG off by one, unconfirmed mutation codon); NO = a documented criterion clearly disqualifies. Judgment calls needing true oncology expertise were labeled PARTIAL rather than guessed. Replace with clinician review before using these numbers for any clinical claim.",
+    "coverage": {
+      "patients_labeled": [
+        1,
+        2,
+        3,
+        5,
+        8,
+        11,
+        13,
+        15
+      ],
+      "n_pairs": 60,
+      "verdict_distribution": {
+        "NO": 39,
+        "PARTIAL": 20,
+        "MATCH": 1
+      },
+      "note": "Labels cover trials that the retriever actually surfaced for these 8 patients (harvested 2026-07-10). Because relevant trials were drawn from the retrieved set, retrieval recall@k is bounded by construction (near 1.0) and MRR is the more informative retrieval signal here; the scoring confusion matrix is the primary, well-posed metric. A recall study over independently-sourced eligible trials is the honest next step."
+    },
     "labeling_protocol": [
-      "1. Run `python -m eval.run_eval --dump-trials patient_<N>` to list the trials currently retrieved.",
-      "2. For each (patient, trial) pair, an oncologist reads the trial's eligibility criteria and the patient profile.",
-      "3. Verdict: MATCH = clearly eligible; PARTIAL = eligible pending missing data; NO = clear exclusion or inclusion mismatch.",
-      "4. Add ALL retrieved trials, not just MATCHes — the eval needs negatives to compute precision.",
-      "5. Add at least 1-2 known-eligible NCTIDs per patient (from clinician knowledge or trial-finder tools) — the eval needs them to compute retrieval recall, since they may NOT appear in the current retrieval output.",
-      "6. The `is_in_retrieval_set` field is computed at eval time, not by the annotator."
+      "1. python -m eval.run_eval --dump-trials <N> lists trials currently retrieved.",
+      "2. Read each trial's eligibility criteria (fetched from ClinicalTrials.gov) against the patient profile.",
+      "3. Assign MATCH / PARTIAL / NO per the definitions in _meta.status, citing the deciding criterion.",
+      "4. For a real recall study, add independently-sourced known-eligible NCT ids (may be outside current retrieval).",
+      "5. For clinical use, have an oncologist review and overwrite annotator with their id."
     ]
   },
   "labels": [
     {
+      "patient_id": 1,
+      "nct_id": "NCT06568692",
+      "expected_verdict": "NO",
+      "rationale": "Both included subsets require HER2-negative (TNBC or HR+/HER2-neg); patient is HER2-positive.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 1,
+      "nct_id": "NCT06419621",
+      "expected_verdict": "NO",
+      "rationale": "Requires triple-negative (ER/PR/HER2 negative); patient is ER-positive/HER2-positive.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 1,
+      "nct_id": "NCT05582499",
+      "expected_verdict": "NO",
+      "rationale": "Neoadjuvant TNBC platform; patient is HER2-positive/ER-positive, not triple-negative.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 1,
+      "nct_id": "NCT05722795",
+      "expected_verdict": "NO",
+      "rationale": "Requires triple-negative breast cancer; patient is HER2-positive/ER-positive.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 1,
+      "nct_id": "NCT06125080",
+      "expected_verdict": "NO",
+      "rationale": "Requires TNBC (ER/PR/HER2 negative); patient is ER-positive/HER2-positive.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 1,
+      "nct_id": "NCT06538896",
+      "expected_verdict": "NO",
+      "rationale": "Requires metastatic TNBC; patient is HER2-positive/ER-positive.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 1,
+      "nct_id": "NCT07394387",
+      "expected_verdict": "NO",
+      "rationale": "Requires Stage II-III TNBC; patient is HER2-positive/ER-positive, not triple-negative.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 1,
+      "nct_id": "NCT07208149",
+      "expected_verdict": "NO",
+      "rationale": "Requires metastatic TNBC; patient is HER2-positive/ER-positive.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
       "patient_id": 2,
-      "nct_id": "NCT07608835",
+      "nct_id": "NCT04151940",
       "expected_verdict": "PARTIAL",
-      "rationale": "EGFR+ NSCLC stage IV fits diagnosis; ECOG 2 may borderline against trial requirements.",
-      "annotator": "seed-illustrative",
-      "annotated_at": "2026-06-05"
+      "rationale": "EGFR-mutant patients allowed if progressed on targeted therapy (patient progressed on osimertinib); pending platinum-doublet+IO plan and no prior advanced-disease chemo/IO.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
     },
     {
       "patient_id": 2,
-      "nct_id": "NCT06357533",
+      "nct_id": "NCT06350097",
       "expected_verdict": "NO",
-      "rationale": "Trial excludes EGFR-mutated patients; patient is EGFR positive.",
-      "annotator": "seed-illustrative",
-      "annotated_at": "2026-06-05"
+      "rationale": "Inclusion requires no prior EGFR-TKI; patient received gefitinib and osimertinib.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
     },
     {
       "patient_id": 2,
-      "nct_id": "NCT03791034",
+      "nct_id": "NCT06523673",
       "expected_verdict": "NO",
-      "rationale": "Trial requires Stage I-IIIA; patient is Stage IV.",
-      "annotator": "seed-illustrative",
-      "annotated_at": "2026-06-05"
+      "rationale": "Requires prior first-line chemotherapy with >=3-month benefit; patient's only prior therapy is EGFR-TKIs, no chemo line.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
     },
     {
       "patient_id": 2,
-      "nct_id": "NCT07185997",
+      "nct_id": "NCT04467723",
       "expected_verdict": "NO",
-      "rationale": "Patient has prior osimertinib (an EGFR-targeting agent) which the trial excludes.",
-      "annotator": "seed-illustrative",
-      "annotated_at": "2026-06-05"
+      "rationale": "Restricted to NSCLC without actionable mutation (EGFR/ALK/ROS1); patient is EGFR-mutation positive.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 2,
+      "nct_id": "NCT05948865",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Has an EGFR-mutant NSCLC expansion cohort matching the patient; borderline on ECOG (trial requires 0-1, patient is ECOG 2).",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 2,
+      "nct_id": "NCT06234579",
+      "expected_verdict": "NO",
+      "rationale": "Requires ALK rearrangement; patient is EGFR-positive/ALK-negative.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 2,
+      "nct_id": "NCT06868277",
+      "expected_verdict": "NO",
+      "rationale": "Requires absence of sensitizing EGFR mutations; patient is EGFR-mutation positive.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
     },
     {
       "patient_id": 3,
-      "nct_id": "NCT01252485",
+      "nct_id": "NCT05360160",
+      "expected_verdict": "NO",
+      "rationale": "Requires KMT2Ar, NUP98r, or NPM1c; patient is NPM1-negative/FLT3-ITD, none of the required lesions.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 3,
+      "nct_id": "NCT06191263",
+      "expected_verdict": "NO",
+      "rationale": "Requires R/R AML that failed venetoclax+HMA; patient is in complete remission after 7+3 induction.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 3,
+      "nct_id": "NCT05586074",
+      "expected_verdict": "NO",
+      "rationale": "Requires refractory/relapsed AML; patient is in complete remission, not R/R.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 3,
+      "nct_id": "NCT02781883",
+      "expected_verdict": "NO",
+      "rationale": "Requires untreated AML or R/R AML; patient is treated and in complete remission (neither arm).",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 3,
+      "nct_id": "NCT06890065",
+      "expected_verdict": "NO",
+      "rationale": "Trial is for CD19+ B-cell lymphoma/leukemia; patient has myeloid leukemia (AML).",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 3,
+      "nct_id": "NCT06543381",
+      "expected_verdict": "NO",
+      "rationale": "Requires IDH1 mutation and prior allogeneic transplant; patient is FLT3-ITD/NPM1-negative with no transplant.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 3,
+      "nct_id": "NCT07144020",
+      "expected_verdict": "NO",
+      "rationale": "Requires relapsed/refractory CD117+ AML; patient is in complete remission, not R/R.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 3,
+      "nct_id": "NCT05756777",
+      "expected_verdict": "NO",
+      "rationale": "Requires relapsed/refractory AML; patient is in complete remission despite FLT3 positivity.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 5,
+      "nct_id": "NCT07085091",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Dose-escalation basket includes CRC progressed after prior therapy; borderline on 'no standard therapy available' (patient may still have later-line options).",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 5,
+      "nct_id": "NCT04657068",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Broad advanced-solid-tumor ATR-inhibitor trial; metastatic CRC fits, pending organ-function/biopsy specifics.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 5,
+      "nct_id": "NCT06179160",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Requires KRAS G12D specifically; patient is KRAS-positive but codon not documented (cannot confirm G12D).",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 5,
+      "nct_id": "NCT05068531",
+      "expected_verdict": "NO",
+      "rationale": "Requires liver-restricted Stage IV CRC planned for curative hepatectomy; patient progressed after 2 palliative lines.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 5,
+      "nct_id": "NCT04103567",
+      "expected_verdict": "NO",
+      "rationale": "Requires clinical Stage II-III rectal cancer for neoadjuvant treatment; patient is Stage IV, previously treated.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 5,
+      "nct_id": "NCT06300177",
+      "expected_verdict": "NO",
+      "rationale": "Trial is for KRAS G12C NSCLC; patient has colorectal cancer (wrong tumor type).",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 5,
+      "nct_id": "NCT04151940",
+      "expected_verdict": "NO",
+      "rationale": "NSCLC trial; patient has colorectal cancer.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 5,
+      "nct_id": "NCT05361174",
+      "expected_verdict": "NO",
+      "rationale": "Melanoma/NSCLC trial; patient has colorectal cancer.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 8,
+      "nct_id": "NCT02870244",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Metastatic melanoma fits; further requires tyrosinase-positive and HLA-A2, not documented (cannot determine).",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 8,
+      "nct_id": "NCT05098210",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Stage IV melanoma matches the melanoma arm; pending measurable disease and biopsy-amenable lesion.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 8,
+      "nct_id": "NCT05361174",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Melanoma + prior BRAF/MEK inhibitor matches; missing required prior anti-PD-1/PD-L1 progression within 12 weeks.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 8,
+      "nct_id": "NCT06179160",
+      "expected_verdict": "NO",
+      "rationale": "Requires KRAS G12D mutation; patient is BRAF V600E melanoma.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 8,
+      "nct_id": "NCT06839105",
+      "expected_verdict": "NO",
+      "rationale": "Melanoma cohort requires prior progression on chemo and PD-(L)1 inhibitors; patient progressed on BRAF/MEK only.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 8,
+      "nct_id": "NCT06495125",
+      "expected_verdict": "NO",
+      "rationale": "LKB1-mutant NSCLC trial; patient has melanoma.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 8,
+      "nct_id": "NCT06221800",
+      "expected_verdict": "NO",
+      "rationale": "Metastatic NSCLC study; patient has melanoma.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 11,
+      "nct_id": "NCT05862740",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Advanced epithelial ovarian cancer fits; primary/interval debulking-surgery setting is borderline for a recurrent patient.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 11,
+      "nct_id": "NCT06465069",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Ovarian cancer is an eligible cohort; heavily pretreated patient fits the 'all standard therapies received' arm.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 11,
+      "nct_id": "NCT05607329",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Recurrent ovarian cancer after platinum + PARPi maintenance matches closely; pending platinum-sensitivity timing and isolated-recurrence criteria.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 11,
+      "nct_id": "NCT05403554",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Epithelial ovarian cancer eligible, but requires mesothelin expression >=2+ in >=40% cells, not documented.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 11,
+      "nct_id": "NCT07472140",
+      "expected_verdict": "NO",
+      "rationale": "Primary HRD ovarian-cancer surgery trial; patient has recurrent disease and already progressed on a PARP inhibitor.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 11,
+      "nct_id": "NCT06134375",
+      "expected_verdict": "NO",
+      "rationale": "Triple-negative breast cancer trial; patient has ovarian cancer.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 11,
+      "nct_id": "NCT06081244",
+      "expected_verdict": "NO",
+      "rationale": "Early triple-negative breast cancer trial; patient has ovarian cancer.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 13,
+      "nct_id": "NCT04683679",
       "expected_verdict": "MATCH",
-      "rationale": "AML registry trial with broad inclusion; patient is in CR with FLT3-ITD+ AML.",
-      "annotator": "seed-illustrative",
-      "annotated_at": "2026-06-05"
+      "rationale": "Explicitly enrolls metastatic ER+/HER2-negative breast cancer; patient is ER+/PR+/HER2-negative Stage IV.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
     },
     {
-      "patient_id": 3,
-      "nct_id": "NCT07183878",
-      "expected_verdict": "MATCH",
-      "rationale": "FLT3-ITD positive AML in CR — fits conditioning trial criteria.",
-      "annotator": "seed-illustrative",
-      "annotated_at": "2026-06-05"
+      "patient_id": 13,
+      "nct_id": "NCT06502691",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Metastatic breast cancer fits; requires candidacy for a PARP inhibitor, which depends on BRCA status (not documented).",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
     },
     {
-      "patient_id": 3,
-      "nct_id": "NCT07044687",
+      "patient_id": 13,
+      "nct_id": "NCT05098210",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Matches the HR-positive/HER2-negative metastatic refractory breast arm; pending measurable-disease confirmation.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 13,
+      "nct_id": "NCT04657068",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Broad advanced-solid-tumor trial; metastatic breast cancer qualifies, pending biopsy/organ-function specifics.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 13,
+      "nct_id": "NCT07342283",
       "expected_verdict": "NO",
-      "rationale": "Trial is for untreated AML; patient has had prior induction (cytarabine + daunorubicin).",
-      "annotator": "seed-illustrative",
-      "annotated_at": "2026-06-05"
+      "rationale": "Requires treatment-naive Stage II-III triple-negative breast cancer; patient is ER+/HER2-negative Stage IV, pretreated.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
     },
     {
-      "patient_id": 1,
-      "nct_id": "NCT06677944",
+      "patient_id": 13,
+      "nct_id": "NCT06793553",
       "expected_verdict": "NO",
-      "rationale": "Trial requires HER2-negative; patient is HER2 positive.",
-      "annotator": "seed-illustrative",
-      "annotated_at": "2026-06-05"
+      "rationale": "Requires metastatic triple-negative (ER-negative) breast cancer; patient is ER-positive.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
     },
     {
-      "patient_id": 1,
-      "nct_id": "NCT06547853",
+      "patient_id": 13,
+      "nct_id": "NCT05269381",
       "expected_verdict": "NO",
-      "rationale": "Trial requires treatment-completed status; patient has progressive disease.",
-      "annotator": "seed-illustrative",
-      "annotated_at": "2026-06-05"
+      "rationale": "No open cohort matches HR+ breast without an actionable driver; requires neoantigen-vaccine production (cohorts 1-2 closed).",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
     },
     {
-      "patient_id": 1,
-      "nct_id": "NCT06443645",
+      "patient_id": 15,
+      "nct_id": "NCT07130032",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Driver-negative NSCLC previously treated with anti-PD-(L)1 + platinum matches; pending confirmation of >6-month prior ICB duration.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 15,
+      "nct_id": "NCT06863506",
       "expected_verdict": "NO",
-      "rationale": "Trial requires localized disease; patient is Stage III.",
-      "annotator": "seed-illustrative",
-      "annotated_at": "2026-06-05"
+      "rationale": "Requires EGFR non-classical mutation; patient is EGFR-negative.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 15,
+      "nct_id": "NCT06523673",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Driver-negative NSCLC progressing after first-line chemo+ICI fits; oligo-progression (<=5 sites) status not documented.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 15,
+      "nct_id": "NCT05142189",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Advanced NSCLC with prior anti-PD-1 tolerance fits a cohort; specific cohort assignment/measurable-disease pending.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 15,
+      "nct_id": "NCT04130516",
+      "expected_verdict": "PARTIAL",
+      "rationale": "NSCLC is an eligible monotherapy cohort (M2) in this solid-tumor trial; pending genotype/specifics.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 15,
+      "nct_id": "NCT05914116",
+      "expected_verdict": "PARTIAL",
+      "rationale": "Advanced solid tumor progressed on standard therapy; metastatic NSCLC fits, pending organ-function specifics.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 15,
+      "nct_id": "NCT04151940",
+      "expected_verdict": "NO",
+      "rationale": "Requires no prior chemotherapy/immunotherapy for advanced disease; patient already received carboplatin/pemetrexed/pembrolizumab first-line.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
+    },
+    {
+      "patient_id": 15,
+      "nct_id": "NCT06718309",
+      "expected_verdict": "NO",
+      "rationale": "Neoadjuvant trial for resectable Stage II-IIIA NSCLC, treatment-naive; patient is Stage IV, heavily pretreated.",
+      "annotator": "criteria-derived-v1",
+      "annotated_at": "2026-07-10"
     }
   ]
 }

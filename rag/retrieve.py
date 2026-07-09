@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 from qdrant_client import QdrantClient
@@ -19,7 +20,8 @@ COLLECTION_NAME = "trials"
 
 rerank_client = Groq(api_key=GROQ_API_KEY)
 
-RERANK_CONCURRENCY = 8
+# Override with CT_RERANK_CONCURRENCY=1 on rate-limited API tiers.
+RERANK_CONCURRENCY = int(os.getenv("CT_RERANK_CONCURRENCY", "8"))
 
 
 def get_exclusion_text(client: QdrantClient, nct_id: str, max_chunks: int = 20) -> str:

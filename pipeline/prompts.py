@@ -189,6 +189,63 @@ Decision rules:
 """
 
 
+SCORE_PROMPT_V4 = """
+You are a clinical trial eligibility PRE-SCREENER. Your output is reviewed by a
+human coordinator afterwards, so your job is to avoid discarding a patient who
+might be eligible — NOT to make the final enrollment decision.
+
+Patient Profile:
+{patient}
+
+Trial ID: {nct_id}
+Trial Title: {title}
+
+Inclusion Criteria (matched from semantic search):
+{criteria}
+
+Exclusion Criteria (full list):
+{exclusion}
+
+Reason step-by-step through the criteria, then commit to a verdict.
+
+CRITICAL RULE — how to handle unknowns:
+The patient profile is a summary and is often incomplete. If a criterion depends
+on information that is NOT stated in the profile, treat it as UNKNOWN, not as
+failed. An unknown criterion NEVER produces NO on its own — it produces PARTIAL,
+because a human can confirm it. Only a criterion you can affirmatively verify
+from the profile may disqualify.
+
+Reserve NO for a documented, unambiguous disqualifier — one of:
+  (a) a fundamental disease mismatch (wrong cancer type / wrong tumor lineage),
+  (b) a biomarker or receptor state the profile explicitly states and that the
+      trial explicitly requires the opposite of (e.g. trial needs HER2-negative,
+      profile says HER2-positive),
+  (c) a stage/line-of-therapy or prior-treatment rule the profile explicitly
+      contradicts (e.g. trial forbids prior EGFR-TKI, profile lists osimertinib),
+  (d) an explicit demographic bound the patient clearly falls outside.
+If the disqualifier is only *possible* but cannot be confirmed from the profile,
+it is NOT grounds for NO. When genuinely torn between PARTIAL and NO, choose
+PARTIAL.
+
+Return ONLY a single JSON object with this exact shape:
+{{
+    "reasoning": {{
+        "exclusions": "<walk each exclusion: CONFIRMED-applies (from profile) / does-not-apply / UNKNOWN. Only CONFIRMED-applies can force NO.>",
+        "inclusions": "<walk the matched inclusions: satisfied / UNKNOWN / clearly-failed>",
+        "verdict_rationale": "<one sentence; if the only blockers are UNKNOWN, the verdict is PARTIAL not NO>"
+    }},
+    "match_type": "MATCH" | "PARTIAL" | "NO",
+    "score": <float 0.0 to 1.0>,
+    "reason": "<one sentence citing the deciding criterion>"
+}}
+
+Decision rules:
+- MATCH (0.75-1.0): profile affirmatively satisfies the key inclusions AND no confirmed exclusion applies.
+- PARTIAL (0.4-0.75): the tumor type fits and no confirmed disqualifier applies, but one or more criteria are UNKNOWN or borderline. THIS IS THE DEFAULT when unsure.
+- NO (0.0-0.4): a documented, unambiguous disqualifier (a-d above) applies. Not for unknowns.
+"""
+
+
 # ── Rerank (rag/retrieve.py) ──────────────────────────────
 RERANK_PROMPT_V1 = """Score relevance of this clinical trial criteria to the patient (0.0-1.0).
 Patient: {patient_summary}
@@ -201,5 +258,5 @@ Return ONLY a JSON: {{"relevance": <float>}}"""
 # Call sites import these. Bump the alias to roll out a new version;
 # keep the V1 constant in place so eval baselines stay reproducible.
 EXTRACTION_PROMPT = EXTRACTION_PROMPT_V2
-SCORE_PROMPT = SCORE_PROMPT_V3
+SCORE_PROMPT = SCORE_PROMPT_V4  # recall-oriented: unknowns -> PARTIAL, not NO
 RERANK_PROMPT = RERANK_PROMPT_V1

@@ -24,6 +24,9 @@ venv/
 # Vector store (local Qdrant lock + segments)
 qdrant_storage/
 
+# Eval criteria cache (fetched from ClinicalTrials.gov at eval time)
+eval/.criteria_cache.json
+
 # IDE
 .vscode/
 .idea/

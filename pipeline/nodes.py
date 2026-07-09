@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from langsmith import traceable
@@ -20,7 +21,11 @@ logger = logging.getLogger(__name__)
 
 groq_client = Groq(api_key=GROQ_API_KEY)
 
-SCORE_CONCURRENCY = 4
+# Concurrency for the per-trial scoring LLM calls. Override with
+# CT_SCORE_CONCURRENCY=1 on rate-limited API tiers (e.g. Groq free tier,
+# 30 req/min) so scoring doesn't exhaust retries and fall back to a
+# non-verdict PARTIAL@0.0 — which would silently poison evaluation.
+SCORE_CONCURRENCY = int(os.getenv("CT_SCORE_CONCURRENCY", "4"))
 
 # ── Node 1: Extract ──────────────────────────────────────
 def extract_node(state: PipelineState) -> PipelineState:
@@ -179,7 +184,8 @@ def _score_with_retry(chunk: dict, profile, max_retries: int = 3) -> dict:
                 "match_type": data.get("match_type", "PARTIAL"),
                 "score": float(data.get("score", 0.5)),
                 "reason": data.get("reason", ""),
-                "phase": chunk.get("phase")
+                "phase": chunk.get("phase"),
+                "scoring_ok": True,  # real model verdict
             }
 
         except Exception as e:
@@ -195,7 +201,8 @@ def _score_with_retry(chunk: dict, profile, max_retries: int = 3) -> dict:
                     "match_type": "PARTIAL",
                     "score": 0.0,
                     "reason": f"Scoring failed: {str(e)[:80]}",
-                    "phase": chunk.get("phase")
+                    "phase": chunk.get("phase"),
+                    "scoring_ok": False,  # rate-limit/error fallback, NOT a verdict
                 }
 
 

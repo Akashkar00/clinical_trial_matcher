@@ -207,11 +207,14 @@ Sample PDFs that work end-to-end live in `tests/patient_1.pdf` … `patient_9.pd
 ### Evaluation
 
 ```bash
-# Full eval against eval/ground_truth.json — retrieval recall, scoring P/R/F1
-python -m eval.run_eval
+# Isolated scoring eval — production scorer over labeled pairs, retrieval-
+# independent, rate-limit-safe (paced). This is the source of the numbers below.
+python -m eval.score_eval --patients 1,2,3,5,8,11,13,15 --pace 15
 
-# Smoke test on first 5 synthetic patients
-python -m eval.run_eval --max-patients 5
+# Full end-to-end eval (retrieval recall/MRR + scoring) against ground_truth.json
+python -m eval.run_eval
+python -m eval.run_eval --patients 1,2,3,5,8   # restrict to specific patients
+python -m eval.run_eval --max-patients 5        # first N patients (smoke test)
 
 # Annotation helper — list trials currently retrieved for a patient
 python -m eval.run_eval --dump-trials 3
@@ -219,6 +222,13 @@ python -m eval.run_eval --dump-trials 3
 # A/B test SCORE_PROMPT_V2 vs V3 against ground truth
 python -m eval.run_eval --compare-prompts
 ```
+
+> **Rate limits.** On the Groq free tier (~30 req/min, ~12k tokens/min, daily
+> cap) the concurrent rerank + score pools blow the budget and the scorer falls
+> back to `PARTIAL@0.0`. Set `CT_SCORE_CONCURRENCY=1 CT_RERANK_CONCURRENCY=1` and
+> use `eval.score_eval --pace 15` for clean, reproducible eval runs; the eval now
+> **excludes** these fallbacks (`scoring_ok=False`) from metrics rather than
+> counting them as verdicts.
 
 ### Tests
 
@@ -339,12 +349,40 @@ For each (patient, trial) pair the labelers reviewed AND that survived retrieval
 
 ### Ground-truth status
 
-`eval/ground_truth.json` ships with **10 seed labels** (illustrative — derived from the README's verdict tables, not clinician-reviewed). The file's `_meta` block documents the labeling protocol:
+`eval/ground_truth.json` ships with **60 criteria-derived labels** across 8 patients (diverse tumor types: HER2+ breast, EGFR+ NSCLC, FLT3-ITD AML, KRAS/MSS CRC, BRAF+ melanoma, BRCA1+ ovarian, HR+/HER2- breast, driver-negative NSCLC). Each `(patient, trial)` pair was labeled by reading the trial's **actual ClinicalTrials.gov eligibility criteria** and applying deterministic rules — tumor type, biomarker/receptor state, disease stage, prior-therapy exclusions, demographic bounds. This is **criteria-derived, not clinician-reviewed** (`annotator: criteria-derived-v1`); judgment calls needing true oncology expertise were labeled PARTIAL rather than guessed. Verdict distribution: **1 MATCH / 20 PARTIAL / 39 NO**. See the `_meta` block for the full protocol and the honesty caveats.
+
+To extend or upgrade the labels:
 
 1. `python -m eval.run_eval --dump-trials <N>` lists what's currently retrieved.
-2. Oncologist labels each pair as MATCH / PARTIAL / NO with a one-sentence rationale.
-3. Adds at least 1–2 known-eligible NCTIDs per patient (may NOT appear in current retrieval — that's how recall gets measured).
-4. Replace the seed labels before publishing any precision/recall numbers.
+2. Read each trial's criteria against the patient profile; assign MATCH / PARTIAL / NO with a one-sentence rationale citing the deciding criterion.
+3. For a real recall study, add independently-sourced known-eligible NCTIDs per patient (may NOT appear in current retrieval — that's how recall gets measured).
+4. For clinical use, have an oncologist review and overwrite `annotator` with their id.
+
+### Measured results (2026-07-10)
+
+Run with the **isolated scorer** (`python -m eval.score_eval`), which drives the production scoring call (`SCORE_PROMPT_V3`, `llama-3.3-70b-versatile`, `temperature=0.1`) directly over the labeled pairs — decoupled from retrieval so the metric reflects the scorer alone. Rate-limit fallbacks (`scoring_ok=False`, i.e. `PARTIAL@0.0`) are **excluded**, not counted as verdicts. **54 of 60** pairs produced a real verdict (6 excluded as rate-limited on the Groq free tier). Full per-pair detail in [eval/results_2026-07-10.json](eval/results_2026-07-10.json).
+
+```
+accuracy = 0.833   (n = 54)
+
+class        P       R      F1    support
+MATCH      0.500   1.000   0.667      1
+PARTIAL    0.909   0.556   0.690     18
+NO         0.829   0.971   0.895     35
+
+Confusion (rows = truth, cols = predicted):
+             MATCH  PARTIAL   NO
+MATCH            1        0    0
+PARTIAL          1       10    7
+NO               0        1   34
+
+Binary — surface [MATCH|PARTIAL] vs reject [NO]:
+P = 0.923   R = 0.632   F1 = 0.750   (tp=12 fp=1 fn=7 tn=34)
+```
+
+**What this says.** The scorer is **precise and conservative**: it rejects clear mismatches almost perfectly (NO recall 0.97) and rarely surfaces a trial it shouldn't (binary precision 0.92, one false surface in 35 true-NO). Its weakness is **over-rejection** — 7 of 18 borderline-eligible (PARTIAL) trials were scored NO, dragging PARTIAL recall to 0.56. For an eligibility pre-screen where a missed eligible trial is the costlier error, that recall gap is the number to improve next (candidate levers: soften the "any ambiguous exclusion ⇒ NO" instruction in `SCORE_PROMPT`, or add a distinct `UNCERTAIN` verdict so missing-data cases don't collapse into NO).
+
+**Caveats, stated plainly.** Labels are criteria-derived, not clinician-reviewed. n=54 is small and MATCH support is 1, so the MATCH row is illustrative only. Retrieval recall is **not** reported as a clean number here: the labeled-relevant trials were drawn from what the retriever surfaced, so recall@k is bounded near 1.0 by construction — a real recall study needs independently-sourced eligible trials (noted in `_meta` as the next step). A separate observation from the run: re-running retrieval on the same patients surfaced a materially different trial set, so retrieval is **not run-to-run deterministic** — worth pinning before quoting retrieval numbers.
 
 ### Prompt A/B testing
 
@@ -390,12 +428,18 @@ Done in this iteration:
 - [x] Configurable Qdrant URL (local-disk OR remote service)
 - [x] Dockerfile + docker-compose with Qdrant as a service
 - [x] Labeled ground-truth schema + retrieval & scoring metrics
+- [x] 60 criteria-derived labels + **measured scoring results** (acc 0.833, n=54) — see [Measured results](#measured-results-2026-07-10)
+- [x] Isolated, rate-limit-safe scoring eval (`eval/score_eval.py`) that excludes fallbacks from metrics
+- [x] Env-configurable concurrency (`CT_SCORE_CONCURRENCY`, `CT_RERANK_CONCURRENCY`) for rate-limited tiers
 - [x] Prompt-version A/B harness
 - [x] 68-test suite with proper mocks
 
 Open work:
 
-- [ ] Replace 10 seed labels in `ground_truth.json` with clinician review
+- [ ] Raise PARTIAL recall (0.56) — the scorer over-rejects borderline-eligible trials; try softening the exclusion-forces-NO rule or adding an `UNCERTAIN` verdict
+- [ ] Clinician review of `ground_truth.json` (currently criteria-derived, not clinician-reviewed)
+- [ ] Real retrieval-recall study with independently-sourced eligible trials (current labels can't measure it without degeneracy)
+- [ ] Make retrieval run-to-run deterministic (observed drift between runs on the same patients)
 - [ ] OCR fallback for scanned PDFs (PyMuPDF returns empty on those — `pytesseract` would close the gap)
 - [ ] Streaming UI updates per pipeline stage in Streamlit
 - [ ] LLM response cache `(patient_hash, criteria_hash) → score` for production cost control
