@@ -1,6 +1,6 @@
 # Clinical Trial Matcher
 
-An AI-powered pipeline that matches patients to relevant clinical trials using LLM clinical reasoning, semantic retrieval, and live data from ClinicalTrials.gov. Built with LangGraph, Groq (Llama 3.3 70B), PubMedBERT embeddings, and Qdrant.
+An AI-powered pipeline and chat assistant that matches patients to relevant clinical trials using LLM clinical reasoning, semantic retrieval, and live data from ClinicalTrials.gov. Built with FastAPI, Streamlit, LangGraph, Groq (`openai/gpt-oss-120b` & `groq/compound-mini`), FlashRank, PubMedBERT embeddings, and Qdrant.
 
 ---
 
@@ -27,19 +27,26 @@ graph TD
     Responder -.-> Memory[(LangGraph MemorySaver\nin-process RAM)]
 ```
 
-Each component is a distinct processing stage. The **Planner** routes conversational queries directly to the **Responder** and technical/clinical queries through the **Retriever → Reranker → Responder** path. **NeMo Guardrails** enforces safety and topic-scoping at the API boundary. Conversation state is persisted in a **LangGraph MemorySaver** (in-process RAM) for multi-turn continuity.
+Each component is a distinct processing stage:
+- **Streamlit UI**: Dual-tab interface supporting PDF report analysis and multi-turn clinical chat.
+- **FastAPI `/query` API**: Central entry point decoupling the frontend from pipeline compute.
+- **Guardrails**: Two-layer safety defense (keyword hard-blocks + Groq LLM topic classifier) preventing prompt injections, personal medical diagnosis requests, or off-topic queries.
+- **Planner Node**: Routes requests into **Conversational** (direct Q&A) or **Technical** (full trial retrieval and eligibility scoring pipeline).
+- **Retriever Node & FlashRank Reranker**: Performs Qdrant vector retrieval, demographic/biomarker filtering, and local cross-encoder reranking (`ms-marco-MiniLM-L-12-v2`).
+- **Responder Node**: Generates human-auditable verdicts or answers.
+- **LangGraph MemorySaver**: In-process RAM checkpointer preserving conversation state across multi-turn sessions.
 
 ### Tech stack
 
 | Layer | Choice | Why |
 |---|---|---|
-| LLM | Groq — Llama 3.3 70B (`llama-3.3-70b-versatile`) | Fast, cheap, JSON-mode capable, good clinical reasoning at this size |
+| LLM | Groq — `openai/gpt-oss-120b` / `groq/compound-mini` | High throughput, clinical reasoning, structured output parsing |
 | Embeddings | `pritamdeka/S-PubMedBert-MS-MARCO` (768-dim) | Domain-tuned medical embeddings beat generic ones for clinical vocab |
 | Vector DB | Qdrant (local disk OR remote via `QDRANT_URL`) | Fast cosine search, payload filtering by criteria_type/nct_id |
-| Orchestration | LangGraph (5-node state graph + MemorySaver) | Deterministic flow, conditional retry edges, in-process RAM memory |
-| API layer | FastAPI + Uvicorn | Typed HTTP API with Swagger UI; sits between UI and pipeline |
-| Guardrails | Keyword hard-block + Groq LLM classifier | Two-layer topic-scoping guard — no heavy NeMo install needed |
-| Reranker | FlashRank (`ms-marco-MiniLM-L-12-v2`) | Local cross-encoder reranker — zero API calls, replaces Groq LLM rerank |
+| Orchestration | LangGraph (State graph + MemorySaver) | Deterministic flow, conditional retry edges, in-process RAM memory |
+| API layer | FastAPI + Uvicorn | Typed HTTP API with Swagger UI (`/docs`); sits between UI and pipeline |
+| Guardrails | Keyword hard-block + Groq LLM classifier | Two-layer topic-scoping guard — zero heavy dependencies |
+| Reranker | FlashRank (`ms-marco-MiniLM-L-12-v2`) | Local cross-encoder reranker — zero API calls, fast in-process execution |
 | Memory | LangGraph MemorySaver | In-process RAM checkpointer for multi-turn session continuity |
 | Tracing | LangSmith (`@traceable` decorators) | Zero-overhead when unset; full trace tree when configured |
 | Validation | Pydantic v2 | Schema enforcement at every system boundary |
@@ -103,6 +110,7 @@ clinical_trial_matcher/
 │
 └── tests/
     ├── conftest.py            # stubs Qdrant + SentenceTransformer at import
+    ├── test_guardrails.py     # 29 tests — hard-block patterns, allow/block topics
     ├── test_extraction.py     # 6 tests — JSON parsing, validation
     ├── test_retrieval.py      # 20 tests — age/gender filtering, chunking
     ├── test_scoring.py        # 9 tests — fence stripping, CoT extraction, retry
@@ -114,63 +122,34 @@ clinical_trial_matcher/
 
 ---
 
-## Setup
+## Setup & Running
 
-### Local (venv)
+### 1. Virtual Environment & Dependencies
 
 ```bash
 git clone <repo>
 cd clinical_trial_matcher
 
-python -m venv clinical_trial
+python3 -m venv clinical_trial
 source clinical_trial/bin/activate     # Windows: clinical_trial\Scripts\activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# Edit .env: GROQ_API_KEY is required, others optional
+# Edit .env: set GROQ_API_KEY
 ```
 
-### Docker
+### 2. Start Application
 
+Start the **FastAPI Backend** in Terminal 1:
 ```bash
-cp .env.example .env
-docker compose up --build
-# Streamlit at http://localhost:8501
-# Qdrant at http://localhost:6333
+clinical_trial/bin/python -m uvicorn api.main:app --port 8000
+# API Docs available at http://localhost:8000/docs
 ```
 
-The compose file runs Qdrant as a service with a healthcheck — no more local file-lock contention between Streamlit and tests.
-
-### Environment variables
-
-| Variable | Required | Default | Purpose |
-|---|---|---|---|
-| `GROQ_API_KEY` | yes | — | LLM extraction + scoring + reranking |
-| `LANGSMITH_API_KEY` | no | — | Enables tracing; `@traceable` becomes no-op when unset |
-| `LANGSMITH_PROJECT` | no | `clinical-trial-matcher` | LangSmith project name |
-| `QDRANT_URL` | no | — | Remote Qdrant URL; falls back to on-disk when unset |
-| `QDRANT_PATH` | no | `./qdrant_storage` | On-disk Qdrant location |
-| `EMBEDDING_MODEL` | no | `pritamdeka/S-PubMedBert-MS-MARCO` | Override for HF embedding model |
-| `LOG_LEVEL` | no | `INFO` | Root logger level |
-
----
-
-## Usage
-
-### CLI
-
+Start the **Streamlit Frontend** in Terminal 2:
 ```bash
-python main.py
-# Runs the pipeline on tests/patient_3.pdf and prints a ranked verdict
-# table plus a token / latency / USD report per stage.
-```
-
-### Streamlit
-
-```bash
-source clinical_trial/bin/activate
-streamlit run app.py
-# Or: docker compose up
+clinical_trial/bin/python -m streamlit run app.py
+# Open UI at http://localhost:8501
 ```
 
 Then open `http://localhost:8501` in a browser, upload a patient PDF, and click **Find Matching Trials**. The UI renders the extracted profile in the sidebar and MATCH / PARTIAL / NO trial cards with reasoning and a "view on ClinicalTrials.gov" link.
