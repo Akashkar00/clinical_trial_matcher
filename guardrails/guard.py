@@ -18,8 +18,10 @@ from guardrails.rules import hard_block_check, ALLOWED_TOPICS_DESCRIPTION
 
 logger = logging.getLogger(__name__)
 
-# Use a smaller, faster model for the guard — saves quota for the main pipeline.
-_GUARD_MODEL = "llama-3.1-8b-instant"
+# groq/compound-mini: fast, cheap, understands the ALLOW/BLOCK prompt well.
+# (llama-prompt-guard-2-22m is a binary injection detector only — too coarse
+#  for topic classification.)
+_GUARD_MODEL = "groq/compound-mini"
 
 
 @lru_cache(maxsize=1)

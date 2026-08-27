@@ -19,7 +19,7 @@ from config import GROQ_API_KEY
 
 logger = logging.getLogger(__name__)
 
-_PLANNER_MODEL = "llama-3.1-8b-instant"
+_PLANNER_MODEL = "groq/compound-mini"
 
 # Keywords that strongly signal a PDF / patient-specific technical request
 _TECHNICAL_SIGNALS = re.compile(
