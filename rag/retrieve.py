@@ -158,8 +158,8 @@ def rerank_results(results: list[dict], profile: PatientProfile) -> list[dict]:
     if ranker is None:
         # Cosine-only fallback
         for r in results:
-            r["rerank_score"] = r["similarity_score"]
-            r["combined_score"] = r["similarity_score"]
+            r["rerank_score"] = float(r["similarity_score"])
+            r["combined_score"] = float(r["similarity_score"])
         results.sort(key=lambda x: x["combined_score"], reverse=True)
         return results
 
@@ -173,20 +173,20 @@ def rerank_results(results: list[dict], profile: PatientProfile) -> list[dict]:
         reranked = ranker.rerank(rerank_req)
 
         # Map index → FlashRank score
-        score_map: dict[int, float] = {item["id"]: item["score"] for item in reranked}
+        score_map: dict[int, float] = {item["id"]: float(item["score"]) for item in reranked}
 
         for i, r in enumerate(results):
-            fr_score = score_map.get(i, 0.0)
+            fr_score = float(score_map.get(i, 0.0))
             r["rerank_score"] = fr_score
-            r["combined_score"] = 0.4 * r["similarity_score"] + 0.6 * fr_score
+            r["combined_score"] = float(0.4 * r["similarity_score"] + 0.6 * fr_score)
 
         logger.info("flashrank.reranked count=%d", len(results))
 
     except Exception as e:
         logger.warning("flashrank.error err=%s — falling back to cosine", str(e)[:80])
         for r in results:
-            r["rerank_score"] = r["similarity_score"]
-            r["combined_score"] = r["similarity_score"]
+            r["rerank_score"] = float(r["similarity_score"])
+            r["combined_score"] = float(r["similarity_score"])
 
     results.sort(key=lambda x: x["combined_score"], reverse=True)
     return results
@@ -242,7 +242,7 @@ def retrieve_trials(profile: PatientProfile, client: QdrantClient, embedder, top
             "title": payload.get("title"),
             "criteria_type": payload.get("criteria_type"),
             "text": payload.get("text"),
-            "similarity_score": hit.score,
+            "similarity_score": float(hit.score),
             "phase": payload.get("phase"),
             "minimum_age": payload.get("minimum_age"),
             "maximum_age": payload.get("maximum_age"),
