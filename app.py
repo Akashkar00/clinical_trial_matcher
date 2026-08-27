@@ -3,8 +3,8 @@ import tempfile
 import os
 import uuid
 import requests
-from pipeline.graph import pipeline
-from models.patient_profile import PatientProfile
+
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
@@ -471,56 +471,49 @@ with tab_pdf:
             tmp_path = tmp.name
 
         try:
-            with st.status("🧪 Running AI Pipeline...", expanded=True) as status:
-                st.write("📄 Extracting patient profile from PDF...")
-                st.write("🌐 Fetching clinical trials...")
-                st.write("🧠 Embedding & FlashRank retrieval...")
-                st.write("⚖️ LLM eligibility scoring...")
-                result = pipeline.invoke(
-                    {
+            with st.status("🧪 Running AI Pipeline via API...", expanded=True) as status:
+                st.write("📄 Uploading & extracting patient profile...")
+                st.write("🌐 Fetching & matching clinical trials...")
+                
+                resp = requests.post(
+                    f"{API_BASE_URL}/query",
+                    json={
                         "pdf_path": tmp_path,
-                        "raw_text": None,
-                        "patient_profile": None,
-                        "fetched_trials": None,
-                        "chunks_stored": None,
-                        "retrieved_chunks": None,
-                        "scored_trials": None,
-                        "error": None,
-                        "retry_count": 0,
                         "session_id": st.session_state.session_id,
-                        "conversation_history": None,
                     },
-                    config={"configurable": {"thread_id": st.session_state.session_id}},
+                    timeout=180,
                 )
                 status.update(label="✅ Analysis Complete!", state="complete")
 
             os.unlink(tmp_path)
 
-            if result.get("error"):
-                st.error(f"❌ Pipeline failed: {result['error']}")
+            if resp.status_code != 200:
+                detail = resp.json().get("detail", resp.text) if resp.headers.get("content-type") == "application/json" else resp.text
+                st.error(f"❌ Analysis failed: {detail}")
             else:
-                profile = result["patient_profile"]
-                trials = result.get("scored_trials", [])
+                data = resp.json()
+                profile = data.get("patient_profile") or {}
+                trials = data.get("trials") or []
 
                 # Sidebar
                 with st.sidebar:
                     st.markdown('<div class="sidebar-title">👤 Patient Profile</div>', unsafe_allow_html=True)
 
                     fields = [
-                        ("🏷️ Diagnosis", profile.diagnosis),
-                        ("🎂 Age", str(profile.age)),
-                        ("⚧ Gender", profile.gender.value),
+                        ("🏷️ Diagnosis", profile.get("diagnosis", "N/A")),
+                        ("🎂 Age", str(profile.get("age", "N/A"))),
+                        ("⚧ Gender", str(profile.get("gender", "N/A"))),
                     ]
-                    if profile.stage:
-                        fields.append(("📊 Stage", profile.stage))
-                    if profile.biomarkers:
-                        fields.append(("🧬 Biomarkers", " • ".join(profile.biomarkers)))
-                    if profile.prior_treatments:
-                        fields.append(("💊 Prior Treatments", " • ".join(profile.prior_treatments)))
-                    if profile.current_status:
-                        fields.append(("📋 Status", profile.current_status))
-                    if profile.ecog_status is not None:
-                        fields.append(("🏃 ECOG Score", str(profile.ecog_status)))
+                    if profile.get("stage"):
+                        fields.append(("📊 Stage", profile["stage"]))
+                    if profile.get("biomarkers"):
+                        fields.append(("🧬 Biomarkers", " • ".join(profile["biomarkers"])))
+                    if profile.get("prior_treatments"):
+                        fields.append(("💊 Prior Treatments", " • ".join(profile["prior_treatments"])))
+                    if profile.get("current_status"):
+                        fields.append(("📋 Status", profile["current_status"]))
+                    if profile.get("ecog_status") is not None:
+                        fields.append(("🏃 ECOG Score", str(profile["ecog_status"])))
 
                     for label, value in fields:
                         st.markdown(f"""
