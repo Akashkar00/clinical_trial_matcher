@@ -12,26 +12,22 @@ Matching a patient to clinical trials is a manual chore: oncologists comb throug
 
 ## Architecture
 
-```
-┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
-│ Patient  │──▶│ Extract  │──▶│  Fetch   │──▶│ Ingest   │──▶│ Retrieve │──▶ ┐
-│  PDF     │   │  (Groq)  │   │ (CT.gov) │   │ (Qdrant) │   │ (cosine+ │   │
-└──────────┘   └──────────┘   └──────────┘   └──────────┘   │  rerank) │   │
-                                                            └──────────┘   │
-                                                                           ▼
-                                                                  ┌──────────────┐
-                                                                  │    Score     │
-                                                                  │ (LLM CoT,    │
-                                                                  │  excl-aware) │
-                                                                  └──────┬───────┘
-                                                                         ▼
-                                                                  ┌──────────────┐
-                                                                  │   Ranked     │
-                                                                  │   matches    │
-                                                                  └──────────────┘
+```mermaid
+graph TD
+    User((User)) --> UI[Streamlit UI]
+    UI --> API[FastAPI /query]
+    API --> Guard{NeMo Guardrails}
+    Guard -->|Blocked| UI
+    Guard -->|Pass| Planner{Planner Node}
+    Planner -->|Conversational| Responder[Responder Node]
+    Planner -->|Technical| Retriever[Retriever Node]
+    Retriever --> Reranker[FlashRank Reranker]
+    Reranker --> Responder
+    Responder --> UI
+    Responder -.-> Memory[(LangGraph MemorySaver\nin-process RAM)]
 ```
 
-Each box is a LangGraph node with explicit error edges and (for `extract`) a retry loop. State is a single `PipelineState` `TypedDict`.
+Each component is a distinct processing stage. The **Planner** routes conversational queries directly to the **Responder** and technical/clinical queries through the **Retriever → Reranker → Responder** path. **NeMo Guardrails** enforces safety and topic-scoping at the API boundary. Conversation state is persisted in a **LangGraph MemorySaver** (in-process RAM) for multi-turn continuity.
 
 ### Tech stack
 
