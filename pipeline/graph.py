@@ -1,6 +1,7 @@
 # pipeline/graph.py
 
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
 from pipeline.state import PipelineState
 from pipeline.nodes import (
     extract_node,
@@ -67,7 +68,10 @@ def build_graph():
 
     graph.add_edge("score", END)
 
-    return graph.compile()
+    # MemorySaver: in-process RAM checkpointer for multi-turn session memory.
+    # Each invocation must pass config={"configurable": {"thread_id": session_id}}.
+    memory = MemorySaver()
+    return graph.compile(checkpointer=memory)
 
 
 # expose compiled graph

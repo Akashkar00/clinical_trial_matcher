@@ -17,8 +17,16 @@ langchain-core==1.4.0
 qdrant-client==1.18.0
 sentence-transformers==5.5.1
 
+# API layer
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+
+# Reranker (local cross-encoder — no API calls)
+flashrank>=0.2.9
+
 # UI
 streamlit==1.58.0
 
 # Tests
 pytest==8.3.3
+httpx>=0.27.0        # FastAPI test client

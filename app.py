@@ -1,8 +1,12 @@
 import streamlit as st
 import tempfile
 import os
+import uuid
+import requests
 from pipeline.graph import pipeline
 from models.patient_profile import PatientProfile
+
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="Clinical Trial Matcher", page_icon="🧬", layout="wide")
 
@@ -371,142 +375,213 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Upload section
-col_upload, col_info = st.columns([3, 2])
-with col_upload:
-    uploaded_file = st.file_uploader("📄 Upload Patient Medical Report", type=["pdf"], label_visibility="visible")
+# ── Session state init ──────────────────────────────────────────────────────
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
-with col_info:
+# ── Tabs: PDF Pipeline | Chat ────────────────────────────────────────────────
+tab_pdf, tab_chat = st.tabs(["📄 PDF Trial Matching", "💬 Ask a Question"])
+
+with tab_chat:
     st.markdown("""
-    <div class="info-card">
-        <h4>🔬 How It Works</h4>
-        <div class="step"><span class="step-num">1</span> Extract patient profile from PDF</div>
-        <div class="step"><span class="step-num">2</span> Fetch trials from ClinicalTrials.gov</div>
-        <div class="step"><span class="step-num">3</span> Semantic similarity retrieval</div>
-        <div class="step"><span class="step-num">4</span> LLM eligibility scoring</div>
+    <div class="info-card" style="margin-bottom:1.2rem">
+        <h4>💬 Clinical Trial Assistant</h4>
+        <div class="step"><span class="step-num">🛡️</span> Topic-guarded by AI Guardrails</div>
+        <div class="step"><span class="step-num">🧠</span> Ask anything about clinical trials, eligibility criteria, or trial phases</div>
     </div>
     """, unsafe_allow_html=True)
 
-# Action button
-if uploaded_file:
-    st.markdown("<br>", unsafe_allow_html=True)
-    run = st.button("🔍 Find Matching Trials", type="primary", use_container_width=True)
-else:
-    run = False
+    # Display chat history
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-if uploaded_file and run:
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp.write(uploaded_file.read())
-        tmp_path = tmp.name
+    # Chat input
+    user_input = st.chat_input("Ask about clinical trials, eligibility, biomarkers...")
+    if user_input:
+        # Show user message
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
 
-    try:
-        with st.status("🧪 Running AI Pipeline...", expanded=True) as status:
-            st.write("📄 Extracting patient profile from PDF...")
-            st.write("🌐 Fetching clinical trials...")
-            st.write("🧠 Embedding & semantic retrieval...")
-            st.write("⚖️ LLM eligibility scoring...")
-            result = pipeline.invoke({
-                "pdf_path": tmp_path,
-                "raw_text": None,
-                "patient_profile": None,
-                "fetched_trials": None,
-                "chunks_stored": None,
-                "retrieved_chunks": None,
-                "scored_trials": None,
-                "error": None,
-                "retry_count": 0
-            })
-            status.update(label="✅ Analysis Complete!", state="complete")
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                try:
+                    resp = requests.post(
+                        f"{API_BASE_URL}/query",
+                        json={
+                            "text_query": user_input,
+                            "session_id": st.session_state.session_id,
+                        },
+                        timeout=30,
+                    )
+                    if resp.status_code == 400:
+                        detail = resp.json().get("detail", "Request blocked.")
+                        st.warning(f"🛡️ **Guardrails blocked this query:** {detail}")
+                        assistant_msg = f"⚠️ Blocked: {detail}"
+                    elif resp.status_code == 200:
+                        data = resp.json()
+                        answer = data.get("answer", "No response generated.")
+                        st.markdown(answer)
+                        assistant_msg = answer
+                    else:
+                        st.error(f"API error {resp.status_code}: {resp.text[:200]}")
+                        assistant_msg = f"Error {resp.status_code}"
+                except requests.exceptions.ConnectionError:
+                    msg = (
+                        "⚠️ Could not reach the API server. "
+                        "Start it with: `uvicorn api.main:app --reload --port 8000`"
+                    )
+                    st.warning(msg)
+                    assistant_msg = msg
+                except Exception as e:
+                    st.error(f"Error: {e}")
+                    assistant_msg = str(e)
 
-        os.unlink(tmp_path)
+        st.session_state.chat_history.append({"role": "assistant", "content": assistant_msg})
 
-        if result.get("error"):
-            st.error(f"❌ Pipeline failed: {result['error']}")
-        else:
-            profile = result["patient_profile"]
-            trials = result.get("scored_trials", [])
+with tab_pdf:
+    col_upload, col_info = st.columns([3, 2])
+    with col_upload:
+        uploaded_file = st.file_uploader("📄 Upload Patient Medical Report", type=["pdf"], label_visibility="visible")
 
-            # Sidebar
-            with st.sidebar:
-                st.markdown('<div class="sidebar-title">👤 Patient Profile</div>', unsafe_allow_html=True)
+    with col_info:
+        st.markdown("""
+        <div class="info-card">
+            <h4>🔬 How It Works</h4>
+            <div class="step"><span class="step-num">1</span> Extract patient profile from PDF</div>
+            <div class="step"><span class="step-num">2</span> Fetch trials from ClinicalTrials.gov</div>
+            <div class="step"><span class="step-num">3</span> FlashRank semantic retrieval</div>
+            <div class="step"><span class="step-num">4</span> LLM eligibility scoring</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-                fields = [
-                    ("🏷️ Diagnosis", profile.diagnosis),
-                    ("🎂 Age", str(profile.age)),
-                    ("⚧ Gender", profile.gender.value),
-                ]
-                if profile.stage:
-                    fields.append(("📊 Stage", profile.stage))
-                if profile.biomarkers:
-                    fields.append(("🧬 Biomarkers", " • ".join(profile.biomarkers)))
-                if profile.prior_treatments:
-                    fields.append(("💊 Prior Treatments", " • ".join(profile.prior_treatments)))
-                if profile.current_status:
-                    fields.append(("📋 Status", profile.current_status))
-                if profile.ecog_status is not None:
-                    fields.append(("🏃 ECOG Score", str(profile.ecog_status)))
+    # Action button
+    if uploaded_file:
+        st.markdown("<br>", unsafe_allow_html=True)
+        run = st.button("🔍 Find Matching Trials", type="primary", use_container_width=True)
+    else:
+        run = False
 
-                for label, value in fields:
-                    st.markdown(f"""
-                    <div class="profile-item">
-                        <div class="label">{label}</div>
-                        <div class="value">{value}</div>
+    if uploaded_file and run:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(uploaded_file.read())
+            tmp_path = tmp.name
+
+        try:
+            with st.status("🧪 Running AI Pipeline...", expanded=True) as status:
+                st.write("📄 Extracting patient profile from PDF...")
+                st.write("🌐 Fetching clinical trials...")
+                st.write("🧠 Embedding & FlashRank retrieval...")
+                st.write("⚖️ LLM eligibility scoring...")
+                result = pipeline.invoke(
+                    {
+                        "pdf_path": tmp_path,
+                        "raw_text": None,
+                        "patient_profile": None,
+                        "fetched_trials": None,
+                        "chunks_stored": None,
+                        "retrieved_chunks": None,
+                        "scored_trials": None,
+                        "error": None,
+                        "retry_count": 0,
+                        "session_id": st.session_state.session_id,
+                        "conversation_history": None,
+                    },
+                    config={"configurable": {"thread_id": st.session_state.session_id}},
+                )
+                status.update(label="✅ Analysis Complete!", state="complete")
+
+            os.unlink(tmp_path)
+
+            if result.get("error"):
+                st.error(f"❌ Pipeline failed: {result['error']}")
+            else:
+                profile = result["patient_profile"]
+                trials = result.get("scored_trials", [])
+
+                # Sidebar
+                with st.sidebar:
+                    st.markdown('<div class="sidebar-title">👤 Patient Profile</div>', unsafe_allow_html=True)
+
+                    fields = [
+                        ("🏷️ Diagnosis", profile.diagnosis),
+                        ("🎂 Age", str(profile.age)),
+                        ("⚧ Gender", profile.gender.value),
+                    ]
+                    if profile.stage:
+                        fields.append(("📊 Stage", profile.stage))
+                    if profile.biomarkers:
+                        fields.append(("🧬 Biomarkers", " • ".join(profile.biomarkers)))
+                    if profile.prior_treatments:
+                        fields.append(("💊 Prior Treatments", " • ".join(profile.prior_treatments)))
+                    if profile.current_status:
+                        fields.append(("📋 Status", profile.current_status))
+                    if profile.ecog_status is not None:
+                        fields.append(("🏃 ECOG Score", str(profile.ecog_status)))
+
+                    for label, value in fields:
+                        st.markdown(f"""
+                        <div class="profile-item">
+                            <div class="label">{label}</div>
+                            <div class="value">{value}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                # Stats
+                n_match = sum(1 for t in trials if t["match_type"] == "MATCH")
+                n_partial = sum(1 for t in trials if t["match_type"] == "PARTIAL")
+                n_no = sum(1 for t in trials if t["match_type"] == "NO")
+
+                st.markdown(f"""
+                <div class="stats-row">
+                    <div class="stat-card match">
+                        <div class="icon">✅</div>
+                        <div class="number">{n_match}</div>
+                        <div class="label">Matches</div>
                     </div>
-                    """, unsafe_allow_html=True)
-
-            # Stats
-            n_match = sum(1 for t in trials if t["match_type"] == "MATCH")
-            n_partial = sum(1 for t in trials if t["match_type"] == "PARTIAL")
-            n_no = sum(1 for t in trials if t["match_type"] == "NO")
-
-            st.markdown(f"""
-            <div class="stats-row">
-                <div class="stat-card match">
-                    <div class="icon">✅</div>
-                    <div class="number">{n_match}</div>
-                    <div class="label">Matches</div>
+                    <div class="stat-card partial">
+                        <div class="icon">⚠️</div>
+                        <div class="number">{n_partial}</div>
+                        <div class="label">Partial</div>
+                    </div>
+                    <div class="stat-card no">
+                        <div class="icon">❌</div>
+                        <div class="number">{n_no}</div>
+                        <div class="label">No Match</div>
+                    </div>
                 </div>
-                <div class="stat-card partial">
-                    <div class="icon">⚠️</div>
-                    <div class="number">{n_partial}</div>
-                    <div class="label">Partial</div>
-                </div>
-                <div class="stat-card no">
-                    <div class="icon">❌</div>
-                    <div class="number">{n_no}</div>
-                    <div class="label">No Match</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
-            # Results
-            st.markdown('<div class="section-title">🎯 Trial Results</div>', unsafe_allow_html=True)
+                # Results
+                st.markdown('<div class="section-title">🎯 Trial Results</div>', unsafe_allow_html=True)
 
-            for i, t in enumerate(trials):
-                match_type = t["match_type"]
-                score = t["score"]
-                css = match_type.lower()
+                for i, t in enumerate(trials):
+                    match_type = t["match_type"]
+                    score = t["score"]
 
-                if match_type == "MATCH":
-                    pill_class, chip_class = "pill-match", "chip-match"
-                elif match_type == "PARTIAL":
-                    pill_class, chip_class = "pill-partial", "chip-partial"
-                else:
-                    pill_class, chip_class = "pill-no", "chip-no"
+                    if match_type == "MATCH":
+                        pill_class, chip_class = "pill-match", "chip-match"
+                    elif match_type == "PARTIAL":
+                        pill_class, chip_class = "pill-partial", "chip-partial"
+                    else:
+                        pill_class, chip_class = "pill-no", "chip-no"
 
-                with st.expander(f"{'✅' if match_type=='MATCH' else '⚠️' if match_type=='PARTIAL' else '❌'} **{t['nct_id']}** — {t['title'][:65]}", expanded=(match_type == "MATCH")):
-                    st.markdown(f"""
-                    <span class="verdict-pill {pill_class}">{match_type}</span>
-                    <span class="score-chip {chip_class}">Score: {score:.2f}</span>
-                    """, unsafe_allow_html=True)
+                    with st.expander(f"{'✅' if match_type=='MATCH' else '⚠️' if match_type=='PARTIAL' else '❌'} **{t['nct_id']}** — {t['title'][:65]}", expanded=(match_type == "MATCH")):
+                        st.markdown(f"""
+                        <span class="verdict-pill {pill_class}">{match_type}</span>
+                        <span class="score-chip {chip_class}">Score: {score:.2f}</span>
+                        """, unsafe_allow_html=True)
 
-                    col1, col2, col3 = st.columns(3)
-                    col1.metric("Verdict", match_type)
-                    col2.metric("Confidence", f"{score:.0%}")
-                    col3.metric("Phase", t.get("phase") or "N/A")
+                        col1, col2, col3 = st.columns(3)
+                        col1.metric("Verdict", match_type)
+                        col2.metric("Confidence", f"{score:.0%}")
+                        col3.metric("Phase", t.get("phase") or "N/A")
 
-                    st.markdown(f'<div class="trial-reason"><strong>💡 Reasoning:</strong> {t["reason"]}</div>', unsafe_allow_html=True)
-                    st.link_button("🔗 View on ClinicalTrials.gov", f"https://clinicaltrials.gov/study/{t['nct_id']}")
+                        st.markdown(f'<div class="trial-reason"><strong>💡 Reasoning:</strong> {t["reason"]}</div>', unsafe_allow_html=True)
+                        st.link_button("🔗 View on ClinicalTrials.gov", f"https://clinicaltrials.gov/study/{t['nct_id']}")
 
-    except Exception as e:
-        st.error(f"❌ Error: {str(e)}")
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")

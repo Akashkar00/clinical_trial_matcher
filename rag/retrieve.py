@@ -1,27 +1,35 @@
 # rag/retrieve.py
 
-import json
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 from langsmith import traceable
 from models.patient_profile import PatientProfile
-from groq import Groq
-from config import GROQ_API_KEY, GROQ_MODEL
-from pipeline.prompts import RERANK_PROMPT
-from observability import track_call
+from observability import track_call  # noqa: F401 kept for future hooks
 
 logger = logging.getLogger(__name__)
 
 COLLECTION_NAME = "trials"
 
-rerank_client = Groq(api_key=GROQ_API_KEY)
 
-# Override with CT_RERANK_CONCURRENCY=1 on rate-limited API tiers.
-RERANK_CONCURRENCY = int(os.getenv("CT_RERANK_CONCURRENCY", "8"))
+@lru_cache(maxsize=1)
+def _get_flashranker():
+    """
+    Lazily load FlashRank reranker. Returns None if flashrank is not installed
+    so the rest of retrieval still works (cosine-only fallback).
+    """
+    try:
+        from flashrank import Ranker
+        ranker = Ranker(model_name="ms-marco-MiniLM-L-12-v2", cache_dir="/tmp/flashrank_cache")
+        logger.info("flashrank.loaded model=ms-marco-MiniLM-L-12-v2")
+        return ranker
+    except ImportError:
+        logger.warning("flashrank not installed — falling back to cosine-only reranking. "
+                       "Run: pip install flashrank")
+        return None
 
 
 def get_exclusion_text(client: QdrantClient, nct_id: str, max_chunks: int = 20) -> str:
@@ -135,43 +143,50 @@ def is_eligible(profile: PatientProfile, payload: dict) -> bool:
     return True
 
 
-@traceable(name="rerank_results", run_type="llm", metadata={"stage": "retrieval"})
+@traceable(name="rerank_results", run_type="chain", metadata={"stage": "retrieval"})
 def rerank_results(results: list[dict], profile: PatientProfile) -> list[dict]:
-    """Re-rank retrieved chunks using LLM relevance scoring.
+    """
+    Re-rank retrieved chunks using FlashRank (local cross-encoder).
 
-    Concurrent across results — `top_k * 4` ≈ 32 short calls is the bulk
-    of pre-scoring latency; running them sequentially was the dominant
-    wall-clock cost in the retrieve stage."""
+    FlashRank runs entirely in-process — no API calls, no quota consumption.
+    Falls back to cosine-only ranking if flashrank is not installed.
+    Combined score: 0.4 * cosine + 0.6 * flashrank_score
+    """
+    ranker = _get_flashranker()
     patient_summary = profile.to_search_query()
 
-    def _rerank_one(r: dict) -> dict:
-        try:
-            prompt = RERANK_PROMPT.format(
-                patient_summary=patient_summary,
-                criteria=r["text"][:300]
-            )
-            with track_call("rerank", GROQ_MODEL) as ctx:
-                ctx["response"] = rerank_client.chat.completions.create(
-                    model=GROQ_MODEL,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.0,
-                    max_tokens=50,
-                    response_format={"type": "json_object"},
-                )
-            raw = ctx["response"].choices[0].message.content.strip()
-            data = json.loads(raw)
-            r["rerank_score"] = float(data.get("relevance", 0.5))
-        except Exception as e:
-            logger.debug("rerank.fallback err=%s", str(e)[:80])
+    if ranker is None:
+        # Cosine-only fallback
+        for r in results:
             r["rerank_score"] = r["similarity_score"]
-        return r
+            r["combined_score"] = r["similarity_score"]
+        results.sort(key=lambda x: x["combined_score"], reverse=True)
+        return results
 
-    workers = min(RERANK_CONCURRENCY, len(results)) or 1
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        results = list(pool.map(_rerank_one, results))
+    try:
+        from flashrank import RerankRequest
+        passages = [
+            {"id": i, "text": r["text"][:512]}  # FlashRank max input
+            for i, r in enumerate(results)
+        ]
+        rerank_req = RerankRequest(query=patient_summary, passages=passages)
+        reranked = ranker.rerank(rerank_req)
 
-    for r in results:
-        r["combined_score"] = 0.4 * r["similarity_score"] + 0.6 * r["rerank_score"]
+        # Map index → FlashRank score
+        score_map: dict[int, float] = {item["id"]: item["score"] for item in reranked}
+
+        for i, r in enumerate(results):
+            fr_score = score_map.get(i, 0.0)
+            r["rerank_score"] = fr_score
+            r["combined_score"] = 0.4 * r["similarity_score"] + 0.6 * fr_score
+
+        logger.info("flashrank.reranked count=%d", len(results))
+
+    except Exception as e:
+        logger.warning("flashrank.error err=%s — falling back to cosine", str(e)[:80])
+        for r in results:
+            r["rerank_score"] = r["similarity_score"]
+            r["combined_score"] = r["similarity_score"]
 
     results.sort(key=lambda x: x["combined_score"], reverse=True)
     return results

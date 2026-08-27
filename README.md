@@ -36,7 +36,11 @@ Each component is a distinct processing stage. The **Planner** routes conversati
 | LLM | Groq — Llama 3.3 70B (`llama-3.3-70b-versatile`) | Fast, cheap, JSON-mode capable, good clinical reasoning at this size |
 | Embeddings | `pritamdeka/S-PubMedBert-MS-MARCO` (768-dim) | Domain-tuned medical embeddings beat generic ones for clinical vocab |
 | Vector DB | Qdrant (local disk OR remote via `QDRANT_URL`) | Fast cosine search, payload filtering by criteria_type/nct_id |
-| Orchestration | LangGraph (5-node state graph) | Deterministic flow, conditional retry edges, framework-traced |
+| Orchestration | LangGraph (5-node state graph + MemorySaver) | Deterministic flow, conditional retry edges, in-process RAM memory |
+| API layer | FastAPI + Uvicorn | Typed HTTP API with Swagger UI; sits between UI and pipeline |
+| Guardrails | Keyword hard-block + Groq LLM classifier | Two-layer topic-scoping guard — no heavy NeMo install needed |
+| Reranker | FlashRank (`ms-marco-MiniLM-L-12-v2`) | Local cross-encoder reranker — zero API calls, replaces Groq LLM rerank |
+| Memory | LangGraph MemorySaver | In-process RAM checkpointer for multi-turn session continuity |
 | Tracing | LangSmith (`@traceable` decorators) | Zero-overhead when unset; full trace tree when configured |
 | Validation | Pydantic v2 | Schema enforcement at every system boundary |
 | Trial source | ClinicalTrials.gov API v2 | Authoritative, free, two-parameter query (`cond` + `term`) |
@@ -48,17 +52,27 @@ Each component is a distinct processing stage. The **Planner** routes conversati
 ```
 clinical_trial_matcher/
 ├── main.py                    # CLI entry point + cost report
-├── app.py                     # Streamlit UI
+├── app.py                     # Streamlit UI (PDF tab + Chat tab)
 ├── config.py                  # env loading, logging, Qdrant URL
 ├── Dockerfile                 # Streamlit container
 ├── docker-compose.yml         # app + Qdrant service
 ├── requirements.txt
 ├── .env.example               # template — copy to .env and fill in
 │
+├── api/
+│   ├── main.py                # FastAPI app — POST /query, GET /health
+│   └── schemas.py             # QueryRequest / QueryResponse Pydantic models
+│
+├── guardrails/
+│   ├── guard.py               # check_guardrails() — keyword + LLM classifier
+│   └── rules.py               # hard-block patterns + LLM topic prompt
+│
 ├── pipeline/
-│   ├── state.py               # PipelineState TypedDict
-│   ├── graph.py               # LangGraph wiring (5 nodes + error edges)
+│   ├── state.py               # PipelineState TypedDict (+ session_id, memory)
+│   ├── graph.py               # LangGraph wiring + MemorySaver checkpointer
 │   ├── nodes.py               # extract / fetch / ingest / retrieve / score
+│   ├── planner.py             # Planner node — routes conversational vs technical
+│   ├── responder.py           # Responder node — multi-turn conversational LLM
 │   └── prompts.py             # versioned prompt registry (V1/V2/V3 + alias)
 │
 ├── extraction/
@@ -75,7 +89,7 @@ clinical_trial_matcher/
 │
 ├── rag/
 │   ├── ingest.py              # batch embed → Qdrant (cache-aware, lazy-load)
-│   └── retrieve.py            # cosine search + biomarker filter + concurrent rerank
+│   └── retrieve.py            # cosine search + biomarker filter + FlashRank rerank
 │
 ├── observability/
 │   └── __init__.py            # CostTracker (tokens, latency, USD per stage)

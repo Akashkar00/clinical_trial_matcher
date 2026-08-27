@@ -1,6 +1,6 @@
 # pipeline/state.py
 
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, Any
 from models.patient_profile import PatientProfile
 from trials.models import ClinicalTrial
 
@@ -30,3 +30,7 @@ class PipelineState(TypedDict):
     # control
     error: Optional[str]
     retry_count: int
+
+    # session / memory
+    session_id: Optional[str]            # thread_id for LangGraph MemorySaver
+    conversation_history: Optional[list[dict]]  # prior turns [{role, content}]
