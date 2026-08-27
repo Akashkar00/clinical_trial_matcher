@@ -172,7 +172,6 @@ def _score_with_retry(chunk: dict, profile, max_retries: int = 3) -> dict:
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.1,
                     max_tokens=800,
-                    response_format={"type": "json_object"},
                 )
             response = ctx["response"]
 

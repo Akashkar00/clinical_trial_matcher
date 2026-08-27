@@ -84,8 +84,7 @@ def extract_patient_profile(raw_text: str) -> PatientProfile:
             model=GROQ_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
-            max_tokens=500,
-            response_format={"type": "json_object"},
+            max_tokens=800,
         )
     raw_response = ctx["response"].choices[0].message.content.strip()
 
